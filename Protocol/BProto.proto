@@ -15,14 +15,25 @@ enum Command {
   DECRBY = 12;
   APPEND = 13;
   GETRANGE = 14;
+
   GET_OK = 15;
+  INT_OK = 16;
+  STRING_OK = 17;
+  NOTEXIST_ERR = 18;
+  NOTMATCH_ERR = 19;
+}
+
+message INT_OK_REPLY {
+  int32 value = 1;
+}
+message STRING_OK_REPLY {
+  string value = 1;
 }
 
 message CMD_SET_REQ {
   string key = 1;
   string value = 2;
 }
-
 message CMD_SET_REPLY {
   string value = 1;
 }
@@ -30,7 +41,24 @@ message CMD_SET_REPLY {
 message CMD_GET_REQ {
   string key = 1;
 }
-
 message CMD_GET_REPLY {
   string value = 1;
+}
+
+// get int reply
+message CMD_STRLEN_REQ {
+  string key = 1;
+}
+// get int reply
+message CMD_APPEND_REQ {
+  string key = 1;
+  string value = 2;
+}
+
+message CMD_INCR_REQ {
+  string key = 1;
+}
+
+message CMD_DECR_REQ {
+  string key = 1;
 }
