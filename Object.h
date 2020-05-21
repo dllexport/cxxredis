@@ -5,8 +5,12 @@
 #include <cstdint>
 #include <boost/any.hpp>
 #include <type_traits>
+#include <chrono>
 #include <iostream>
+#include <time.h>
 
+#include "SmartPtr.h"
+using Clock = std::chrono::time_point<std::chrono::system_clock>;
 
 enum class ENCODING_TYPE : uint8_t {
     NONE = 0,
@@ -16,9 +20,12 @@ enum class ENCODING_TYPE : uint8_t {
     LIST = 1 << 3,
 };
 
-struct Object {
+struct Object : public SmartPtr<Object> {
     template<class Any>
     Object(ENCODING_TYPE encoding_type, Any any) : encoding(encoding_type), any(any) {}
+
+    template<class Any>
+    Object(ENCODING_TYPE encoding_type, Any any, Clock expire_time) : encoding(encoding_type), any(any), expire_time(expire_time) {}
 
     Object(ENCODING_TYPE encoding_type, const char* any) = delete;
 
@@ -60,9 +67,6 @@ struct Object {
         return *this;
     }
 
-    /*bool operator==(const Object& rhs) const {
-        return this == &rhs;
-    }*/
     bool operator == (Object const& rhs) const {
         return this == &rhs;
     }
@@ -71,11 +75,22 @@ struct Object {
         return this != &rhs;
     }
 
+    bool Expired() {
+        auto now = std::chrono::system_clock::now();
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(now - expire_time).count();
+        return diff < 0;
+    }
+
+    void SetExpire(Clock&& time) {
+        this->expire_time = time;
+    }
+
     ENCODING_TYPE encoding;
     boost::any any;
-
     static Object NONE_OBJECT;
 
+private:
+    Clock expire_time;
 };
 
 

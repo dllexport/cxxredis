@@ -1,0 +1,36 @@
+syntax = "proto3";
+enum Command {
+  OK = 0;
+  SET = 1;
+  GET = 2;
+  GETSET = 3;
+  SETEX = 4;
+  SETNX = 5;
+  SETRANGE = 6;
+  STRLEN = 7;
+  PSETEX = 8;
+  INCR = 9;
+  INCRBY = 10;
+  DECR = 11;
+  DECRBY = 12;
+  APPEND = 13;
+  GETRANGE = 14;
+  GET_OK = 15;
+}
+
+message CMD_SET_REQ {
+  string key = 1;
+  string value = 2;
+}
+
+message CMD_SET_REPLY {
+  string value = 1;
+}
+
+message CMD_GET_REQ {
+  string key = 1;
+}
+
+message CMD_GET_REPLY {
+  string value = 1;
+}
