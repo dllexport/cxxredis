@@ -7,6 +7,7 @@
 #include <boost/asio/read.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/trim_all.hpp>
 #include <iostream>
 #include "../Protocol/bproto.h"
 #include "../Utils/linenoise.h"
@@ -54,12 +55,32 @@ constexpr unsigned int str2int(const char *str, int h = 0)
 }
 
 static char *hints(const char *buf, int *color, int *bold) {
-    if (!strcasecmp(buf,"set")) {
+    std::regex kv_reg("(SET|SETNX|INCRBY|DECRBY|APPEND)\\s*", std::regex::icase);
+    std::regex kvv_reg("(PSETEX|SETEX)\\s*", std::regex::icase);
+//    std::regex vv_reg("(PSETEX|SETEX)\\s*\\w+\\s*", std::regex::icase);
+    std::regex v_reg("(SET|SETNX|INCRBY|DECRBY|APPEND)\\s*\\w+\\s*", std::regex::icase);
+    std::regex k_reg("(GET|INCR|DECR|STRLEN)\\s*", std::regex::icase);
+    auto str = std::string(buf);
+    if (std::regex_match(str, kvv_reg)){
         *color = 35;
         *bold = 0;
-        return " <key> <value>";
+        return " [key] [value] [expire_time]";
     }
-
+    if (std::regex_match(str, kv_reg)){
+        *color = 35;
+        *bold = 0;
+        return " [key] [value]";
+    }
+    if (std::regex_match(str, v_reg)){
+        *color = 35;
+        *bold = 0;
+        return " [value]";
+    }
+    if (std::regex_match(str, k_reg)){
+        *color = 35;
+        *bold = 0;
+        return " [key]";
+    }
     return NULL;
 }
 
@@ -96,12 +117,13 @@ public:
 
 
 
-            while((line = linenoise("hello> ")) != NULL) {
+            while((line = linenoise("cxxredis> ")) != NULL) {
 //            while(1) {
 //                std::cin.getline(&input.at(0), 4096);
 //                line = &input[0];
-//                linenoiseHistoryAdd(line); /* Add to the history. */
+                linenoiseHistoryAdd(line); /* Add to the history. */
                 auto line_str = std::string(line);
+                boost::trim_all(line_str);
                 if (line[0] != '\0' && line[0] != '/') {
                     auto bytes_to_send = serialize(line_str, buff);
                     if (bytes_to_send <= 0) {
@@ -126,7 +148,7 @@ public:
                     auto payload_len = header->payload_len;
                     auto payload_type = header->payload_cmd;
                     if (payload_type == Command::OK && payload_len == 0) {
-//                        std::cout << "OK\n";
+                        std::cout << "OK\n";
                         continue;
                     }
                     bytes_read = boost::asio::async_read(this->socket, boost::asio::buffer(&buff[0], header->payload_len), yield[ec]);
@@ -168,9 +190,15 @@ private:
             GenStringCase2(GET)
             GenStringCase2(STRLEN)
             GenStringCase3(SET)
+            GenStringCase3(GETSET)
             GenStringCase3(APPEND)
             GenStringCase2(INCR)
             GenStringCase2(DECR)
+            GenStringCase3(DECRBY)
+            GenStringCase3(INCRBY)
+            GenStringCase3(SETNX)
+            GenStringCase3(SETEX)
+            GenStringCase3(PSETEX)
         default:
         {
             return -1;
@@ -182,6 +210,9 @@ private:
     {
         switch (cmd_type)
         {
+            case Command::EXIST_ERR:{
+                return "Key already exist";
+            }
             case Command::NOTEXIST_ERR:{
                 return "Key not exist";
             }

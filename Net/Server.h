@@ -9,10 +9,39 @@
 #include "../String.h"
 #include "HandleAlloc.h"
 
+#define Q(x) #x
+#define QUOTE(x) Q(x)
+#define GENSTRCASE_COMMAND(key) Command::key
+#define GenStringCase3(key_name, reply_type) \
+    case GENSTRCASE_COMMAND(key_name): \
+    { \
+        CMD_##key_name##_REQ req; \
+        req.ParseFromArray(&buff[0], bytes_transferred); \
+        auto pair = String::key_name(0, std::string(req.key()), std::move(*req.mutable_value())); \
+        if (pair.first == (int)Command::OK) \
+            reply_type(pair.second); \
+        else \
+            replyErr((int)pair.first); \
+        break; \
+    }
+
+#define GenStringCase2(key_name, reply_type) \
+    case GENSTRCASE_COMMAND(key_name): \
+    { \
+        CMD_##key_name##_REQ req; \
+        req.ParseFromArray(&buff[0], bytes_transferred); \
+        auto pair = String::key_name(0, std::string(req.key())); \
+        if (pair.first == (int)Command::OK) \
+            reply_type(pair.second); \
+        else \
+            replyErr((int)pair.first); \
+        break; \
+    }
 class Session
 {
 public:
     Session(boost::asio::io_context &io) : buff(1024), peer(io) {}
+
     void WaitProcess()
     {
         readHeader();
@@ -23,19 +52,22 @@ public:
         boost::asio::async_read(this->peer,
                                 boost::asio::buffer(&buff[0], BProtoHeaderSize),
                                 make_custom_alloc_handler(
-                                        this->handler_memory_,
-                                        [this](const boost::system::error_code &ec,
-                                               std::size_t bytes_transferred) {
-                                            if (ec)
-                                            {
-                                                std::cout << ec.message();
-                                                fflush(stdout);
-                                                return;
-                                            }
-                                            auto header = (BProtoHeader *)&buff[0];
-                                            auto buffer_size = buff.size();
-                                            this->readPayload(header->payload_len, header->payload_cmd);
-                                        }));
+                                    this->handler_memory_,
+                                    [this](const boost::system::error_code &ec,
+                                           std::size_t bytes_transferred) {
+                                        if (ec)
+                                        {
+                                            std::cout << ec.message();
+                                            fflush(stdout);
+                                            return;
+                                        }
+                                        auto header = (BProtoHeader *)&buff[0];
+                                        auto buffer_size = buff.size();
+                                        if (header->payload_len > buffer_size) {
+                                            return;
+                                        }
+                                        this->readPayload(header->payload_len, header->payload_cmd);
+                                    }));
     }
 
     void readPayload(uint32_t size, Command cmd_type)
@@ -43,165 +75,79 @@ public:
         boost::asio::async_read(this->peer,
                                 boost::asio::buffer(&buff[0], size),
                                 make_custom_alloc_handler(
-                                        this->handler_memory_,
-                                        [this, cmd_type](const boost::system::error_code &ec,
-                                                         std::size_t bytes_transferred) {
-                                            if (ec)
+                                    this->handler_memory_,
+                                    [this, cmd_type](const boost::system::error_code &ec,
+                                                     std::size_t bytes_transferred) {
+                                        if (ec)
+                                        {
+                                            std::cout << ec.message();
+                                            fflush(stdout);
+                                            return;
+                                        }
+                                        switch (cmd_type)
+                                        {
+                                            case Command::SET:
                                             {
-                                                std::cout << ec.message();
-                                                fflush(stdout);
-                                                return;
+                                                CMD_SET_REQ req;
+                                                req.ParseFromArray(&buff[0], bytes_transferred);
+                                                String::SET(0, std::string(req.key()), std::move(*req.mutable_value()));
+                                                replyOK();
+                                                break;
                                             }
-                                            switch (cmd_type)
+                                            case Command::SETEX:
                                             {
-                                                case Command::SET:
-                                                {
-                                                    CMD_SET_REQ req;
-                                                    req.ParseFromArray(&buff[0], bytes_transferred);
-                                                    String::Set(0, std::string(req.key()), std::move(*req.mutable_value()));
-                                                    replyOK();
-                                                    break;
-                                                }
-                                                case Command::GET:
-                                                {
-                                                    CMD_GET_REQ req;
-                                                    req.ParseFromArray(&buff[0], bytes_transferred);
-                                                    auto &str = String::Get(0, std::string(req.key()));
-                                                    replyStringOK(str);
-                                                    break;
-                                                }
-                                                case Command::INCR:
-                                                {
-                                                    CMD_INCR_REQ req;
-                                                    req.ParseFromArray(&buff[0], bytes_transferred);
-                                                    auto pair = String::Incr(0, std::string(req.key()));
-                                                    if (pair.first == (int)Command::OK)
-                                                        replyStringOK(pair.second);
-                                                    else
-                                                        replyErr((int)pair.first);
-                                                    break;
-                                                }
-                                                case Command::DECR:
-                                                {
-                                                    CMD_DECR_REQ req;
-                                                    req.ParseFromArray(&buff[0], bytes_transferred);
-                                                    auto pair = String::Decr(0, std::string(req.key()));
-                                                    if (pair.first == (int)Command::OK)
-                                                        replyStringOK(pair.second);
-                                                    else
-                                                        replyErr((int)pair.first);
-                                                    break;
-                                                }
-                                                case Command::STRLEN:
-                                                {
-                                                    CMD_STRLEN_REQ req;
-                                                    req.ParseFromArray(&buff[0], bytes_transferred);
-                                                    auto len_pair = String::Strlen(0, std::string(req.key()));
-                                                    if (len_pair.first)
-                                                        replyIntOK(len_pair.second);
-                                                    else
-                                                        replyErr(len_pair.second);
-                                                    break;
-                                                }
-                                                case Command::APPEND:
-                                                {
-                                                    CMD_APPEND_REQ req;
-                                                    req.ParseFromArray(&buff[0], bytes_transferred);
-                                                    auto res_pair = String::Append(0, std::string(req.key()), std::move(*req.mutable_value()));
-                                                    if (res_pair.first == Command::OK)
-                                                        replyIntOK(res_pair.second.size());
-                                                    else
-                                                        replyErr(res_pair.first);
-                                                    break;
-                                                }
-                                                default:
-                                                {
-                                                }
-                                            };
-                                            readHeader();
-                                        }));
+                                                CMD_SETEX_REQ req;
+                                                req.ParseFromArray(&buff[0], bytes_transferred);
+                                                auto pair = String::SETEX(0, std::string(req.key()), std::move(*req.mutable_value()), std::move(*req.mutable_expire_time()));
+                                                if (pair.first == (uint32_t)Command::OK)
+                                                    replyIntOK(pair.second);
+                                                else
+                                                    replyErr((uint32_t)pair.first);
+                                                break;
+                                            }
+                                            case Command::GET:
+                                        {
+                                            CMD_GET_REQ req;
+                                            req.ParseFromArray(&buff[0], bytes_transferred);
+                                            auto &str = String::GET(0, std::string(req.key()));
+                                            replyStringOK(str);
+                                            break;
+                                        }
+                                            GenStringCase3(SETNX, replyIntOK)
+                                            GenStringCase3(GETSET, replyStringOK)
+                                            GenStringCase2(INCR,replyStringOK)
+                                            GenStringCase2(DECR,replyStringOK)
+                                            GenStringCase2(STRLEN,replyIntOK)
+                                            GenStringCase3(APPEND,replyStringOK)
+                                            GenStringCase3(INCRBY,replyStringOK)
+                                            GenStringCase3(DECRBY,replyStringOK)
+
+                                            default:
+                                            {
+                                            }
+                                        };
+                                        readHeader();
+                                    }));
     }
 
-    void replyOK()
-    {
-        auto header = (BProtoHeader *)&buff[0];
-        header->payload_len = 0;
-        header->payload_cmd = Command::OK;
-        boost::asio::async_write(this->peer,
-                                 boost::asio::buffer(&buff[0], BProtoHeaderSize),
-                                 [this](const boost::system::error_code &ec,
-                                        std::size_t bytes_transferred) {
-                                     if (ec)
-                                     {
-                                         return;
-                                     }
-                                 });
-    }
-    void replyIntOK(int code)
-    {
-        auto header = (BProtoHeader *)&buff[0];
-        INT_OK_REPLY reply;
-        reply.set_value(code);
-        header->payload_len = reply.ByteSizeLong();
-        header->payload_cmd = Command::INT_OK;
-        reply.SerializePartialToArray(&buff[BProtoHeaderSize], reply.ByteSizeLong());
-        boost::asio::async_write(this->peer,
-                                 boost::asio::buffer(&buff[0], BProtoHeaderSize + header->payload_len),
-                                 [this](const boost::system::error_code &ec,
-                                        std::size_t bytes_transferred) {
-                                     if (ec)
-                                     {
-                                         return;
-                                     }
-                                 });
-    }
-    void replyStringOK(const std::string &str)
-    {
-        auto header = (BProtoHeader *)&buff[0];
-        STRING_OK_REPLY reply;
-        reply.set_value(str);
-        header->payload_len = reply.ByteSizeLong();
-        header->payload_cmd = Command::STRING_OK;
-        reply.SerializeToArray(BProtoHeaderOffset(&buff[0]), header->payload_len);
-        boost::asio::async_write(this->peer,
-                                 boost::asio::buffer(&buff[0], BProtoHeaderSize + header->payload_len),
-                                 [this](const boost::system::error_code &ec,
-                                        std::size_t bytes_transferred) {
-                                     if (ec)
-                                     {
-                                         return;
-                                     }
-                                 });
-    }
-    void replyErr(int code)
-    {
-        auto header = (BProtoHeader *)&buff[0];
-        INT_OK_REPLY reply;
-        reply.set_value(code);
-        header->payload_len = 0;
-        header->payload_cmd = (Command)code;
-        reply.SerializePartialToArray(&buff[BProtoHeaderSize], reply.ByteSizeLong());
-        boost::asio::async_write(this->peer,
-                                 boost::asio::buffer(&buff[0], BProtoHeaderSize + header->payload_len),
-                                 [this](const boost::system::error_code &ec,
-                                        std::size_t bytes_transferred) {
-                                     if (ec)
-                                     {
-                                         return;
-                                     }
-                                 });
-    }
+    void replyOK();
+
+    void replyIntOK(int code);
+
+    void replyStringOK(const std::string &str);
+
+    void replyErr(int code);
+
     std::vector<uint8_t> buff;
     boost::asio::ip::tcp::socket peer;
     // The memory to use for handler-based custom memory allocation.
     handler_memory handler_memory_;
 };
+
 class Server
 {
 public:
-    Server() : io_context(BOOST_ASIO_CONCURRENCY_HINT_UNSAFE), acceptor(io_context)
-    {
-    }
+    Server() : io_context(BOOST_ASIO_CONCURRENCY_HINT_UNSAFE), acceptor(io_context) {}
 
     void Run()
     {
@@ -239,10 +185,6 @@ public:
                 session->WaitProcess();
                 this->runAccept();
             });
-    }
-
-    void handleOnAccept(boost::system::error_code ec)
-    {
     }
 
 private:

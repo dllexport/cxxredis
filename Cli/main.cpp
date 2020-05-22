@@ -5,6 +5,9 @@
 #include <thread>
 int main()
 {
+    std::regex reg("(set|SET)\\s+");
+    auto str = std::string("set    ");
+    auto res = std::regex_match(str, reg);
     Client client;
     client.Run();
 }

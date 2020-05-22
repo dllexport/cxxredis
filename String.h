@@ -10,7 +10,7 @@
 class String
 {
 public:
-    static const std::string &Get(uint8_t db_index, const std::string &&key)
+    static const std::string &GET(uint8_t db_index, const std::string &&key)
     {
         auto db = Database::GetInstance();
         auto object = db->Get(db_index, std::forward<const std::string>(key));
@@ -19,7 +19,7 @@ public:
         return boost::any_cast<const std::string &>(object->any);
     }
 
-    static std::string_view GetRange(uint8_t db_index, const std::string &&key, int32_t start, int32_t end)
+    static std::string_view GETRANGE(uint8_t db_index, const std::string &&key, int32_t start, int32_t end)
     {
         auto db = Database::GetInstance();
         auto object = db->Get(db_index, std::forward<const std::string>(key));
@@ -37,30 +37,29 @@ public:
     }
 
     // return <err, string>
-    static std::pair<bool, std::string> GetSet(uint8_t db_index, const std::string &&key, std::string &&value)
+    static std::pair<bool, std::string> GETSET(uint8_t db_index, const std::string &&key, std::string &&value)
     {
         auto db = Database::GetInstance();
         auto object = db->Get(db_index, std::forward<const std::string>(key));
         std::string result;
         // if key not exist, insert it into hashmap
-        if (object->encoding == ENCODING_TYPE::NONE)
+        if (!object)
         {
             db->Set(db_index,
                     std::forward<const std::string &&>(key),
                     new Object(ENCODING_TYPE::STRING, std::forward<std::string &&>(value)));
-            return {true, String::empty};
+            return {(int)Command::OK, String::empty};
         }
-        // if key is not String type
-        if (object->encoding != ENCODING_TYPE::STRING)
+        else if (object->encoding != ENCODING_TYPE::STRING) // if key is not String type
         {
-            return {false, String::empty};
+            return {(int)Command::NOTMATCH_ERR, String::empty};
         }
         result = boost::any_cast<std::string>(object->any);
         object->any = std::forward<std::string &&>(value);
-        return {true, result};
+        return {(int)Command::OK, result};
     }
 
-    static std::pair<bool, uint32_t> Strlen(uint8_t db_index, const std::string &&key)
+    static std::pair<bool, uint32_t> STRLEN(uint8_t db_index, const std::string &&key)
     {
         auto db = Database::GetInstance();
         auto object = db->Get(db_index, std::forward<const std::string>(key));
@@ -71,17 +70,24 @@ public:
         return {false, (int)Command::NOTMATCH_ERR};
     }
 
-    static uint8_t SetEx(uint8_t db_index, const std::string &&key, std::string &&value, uint32_t expire_time)
+    static std::pair<uint32_t, uint32_t> SETEX(uint8_t db_index, const std::string &&key, std::string &&value, std::string &&expire_time)
     {
         auto db = Database::GetInstance();
-        return db->Set(db_index,
+        uint32_t end_time = 0;
+        try {
+            end_time = boost::lexical_cast<uint32_t>(expire_time);
+        }catch(...) {
+            return {Command::PARAM_ERR, 0};
+        }
+        db->Set(db_index,
                        std::forward<const std::string &&>(key),
                        new Object(ENCODING_TYPE::STRING,
                                   std::forward<std::string &&>(value),
-                                  std::chrono::system_clock::now() + std::chrono::seconds(expire_time)));
+                                  std::chrono::system_clock::now() + std::chrono::seconds(end_time)));
+        return {Command::OK, 1};
     }
 
-    static uint8_t PSetEx(uint8_t db_index, const std::string &&key, std::string &&value, uint32_t expire_time)
+    static uint8_t PSETEX(uint8_t db_index, const std::string &&key, std::string &&value, uint32_t expire_time)
     {
         auto db = Database::GetInstance();
         return db->Set(db_index,
@@ -91,7 +97,7 @@ public:
                                   std::chrono::system_clock::now() + std::chrono::milliseconds(expire_time)));
     }
 
-    static uint8_t Set(uint8_t db_index, const std::string &&key, std::string &&value)
+    static uint8_t SET(uint8_t db_index, const std::string &&key, std::string &&value)
     {
         auto db = Database::GetInstance();
         return db->Set(db_index,
@@ -99,17 +105,16 @@ public:
                        new Object(ENCODING_TYPE::STRING, std::forward<std::string &&>(value)));
     }
 
-    static uint8_t SetNX(uint8_t db_index, const std::string &&key, std::string &&value)
+    static std::pair<uint32_t, uint32_t> SETNX(uint8_t db_index, const std::string &&key, std::string &&value)
     {
         auto db = Database::GetInstance();
         auto object = db->Get(db_index, std::forward<const std::string>(key));
-        if (!object)
-            return -1;
-        if (object->encoding != ENCODING_TYPE::STRING)
-            return -1;
-        return db->Set(db_index,
-                       std::forward<const std::string &&>(key),
-                       new Object(ENCODING_TYPE::STRING, std::forward<std::string &&>(value)));
+        if (object)
+            return {(uint32_t)Command::EXIST_ERR, 0};
+        db->Set(db_index,
+                std::forward<const std::string &&>(key),
+                new Object(ENCODING_TYPE::STRING, std::forward<std::string &&>(value)));
+        return {(uint32_t)Command::OK, 1};
     }
 
     /*
@@ -117,19 +122,19 @@ public:
      * string obj should be a number
      * return <res, const std::string&>
      */
-    static std::pair<uint32_t, const std::string &> Incr(uint8_t db_index, const std::string &&key)
+    static std::pair<uint32_t, const std::string &> INCR(uint8_t db_index, const std::string &&key)
     {
         return IncrDecrbyOP(db_index, std::forward<const std::string &&>(key), "1", true);
     }
-    static std::pair<uint32_t, const std::string &> Incrby(uint8_t db_index, const std::string &&key, std::string &&by)
+    static std::pair<uint32_t, const std::string &> INCRBY(uint8_t db_index, const std::string &&key, std::string &&by)
     {
         return IncrDecrbyOP(db_index, std::forward<const std::string &&>(key), std::forward<std::string &&>(by), true);
     }
-    static std::pair<uint32_t, const std::string &> Decr(uint8_t db_index, const std::string &&key)
+    static std::pair<uint32_t, const std::string &> DECR(uint8_t db_index, const std::string &&key)
     {
         return IncrDecrbyOP(db_index, std::forward<const std::string &&>(key), "1", false);
     }
-    static std::pair<uint32_t, const std::string &> Decrby(uint8_t db_index, const std::string &&key, std::string &&by)
+    static std::pair<uint32_t, const std::string &> DECRBY(uint8_t db_index, const std::string &&key, std::string &&by)
     {
         return IncrDecrbyOP(db_index, std::forward<const std::string &&>(key), std::forward<std::string &&>(by), false);
     }
@@ -139,7 +144,7 @@ public:
      * return total len
      * return 0 if failed
      */
-    static std::pair<uint32_t, const std::string &> Append(uint8_t db_index, const std::string &&key, std::string &&append_value)
+    static std::pair<uint32_t, const std::string &> APPEND(uint8_t db_index, const std::string &&key, std::string &&append_value)
     {
         auto db = Database::GetInstance();
         auto object = db->Get(db_index, std::forward<const std::string>(key));

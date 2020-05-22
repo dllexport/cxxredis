@@ -3,4 +3,4 @@
 //
 
 #include "String.h"
-const auto String::empty = std::string();
+const auto String::empty = std::string("nil");

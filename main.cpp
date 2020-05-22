@@ -7,7 +7,6 @@ int main() {
 
     auto t1 = std::chrono::high_resolution_clock::now();
 
-    auto str = String::Get(0, "key");
 
     auto t2 = std::chrono::high_resolution_clock::now();
 
