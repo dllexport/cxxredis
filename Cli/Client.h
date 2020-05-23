@@ -49,6 +49,24 @@
         header->payload_cmd = GENSTRCASE_COMMAND(key); \
         return BProtoHeaderSize + serial_size; \
     }
+#define GenStringCase4(key) \
+    case str2int(QUOTE(key)): \
+    { \
+        if (parts.size() != 4) \
+        return -1; \
+        CMD_##key##_REQ cs; \
+        cs.set_key(parts[1]); \
+        cs.set_value(parts[2]); \
+        cs.set_value2(parts[3]); \
+        auto serial_size = cs.ByteSizeLong(); \
+        if (serial_size > buff.capacity()) \
+        return -1; \
+        cs.SerializeToArray(BProtoHeaderOffset(&buff[0]), serial_size); \
+        auto header = (BProtoHeader *)&buff[0]; \
+        header->payload_len = serial_size; \
+        header->payload_cmd = GENSTRCASE_COMMAND(key); \
+        return BProtoHeaderSize + serial_size; \
+    }
 constexpr unsigned int str2int(const char *str, int h = 0)
 {
     return !str[h] ? 5381 : (str2int(str, h + 1) * 33) ^ str[h];
@@ -81,15 +99,13 @@ static char *hints(const char *buf, int *color, int *bold) {
         *bold = 0;
         return " [key]";
     }
-    return NULL;
+    return nullptr;
 }
 
 class Client
 {
 public:
-    Client() : io_context(BOOST_ASIO_CONCURRENCY_HINT_UNSAFE), socket(io_context)
-    {
-    }
+    Client() : io_context(BOOST_ASIO_CONCURRENCY_HINT_UNSAFE), socket(io_context) {}
 
     void Run()
     {
@@ -156,12 +172,16 @@ public:
                     {
                         return;
                     }
-                    std::cout << deserialize(buff, payload_len, payload_type) << std::endl;
-                    fflush(stdout);
+                    auto rs = deserialize(buff, payload_len, payload_type);
+                    for (auto &item : rs) {
+                        std::cout << item << std::endl;
+                        fflush(stdout);
+                    }
+
                 } else if (line[0] == '/') {
                     printf("Unreconized command: %s\n", line);
                 }
-//                free(line);
+                free(line);
             }
 
             auto t2 = std::chrono::high_resolution_clock::now();
@@ -187,6 +207,14 @@ private:
         parts[0] = boost::to_upper_copy<std::string>(parts[0]);
         switch (str2int(parts[0].c_str()))
         {
+            case str2int("KEYS"): {
+                if (parts.size() != 1) return false;
+                auto header = (BProtoHeader *) &buff[0];
+                header->payload_len = 0;
+                header->payload_cmd = Command::KEYS;
+                return BProtoHeader::Size();
+                break;
+            }
             GenStringCase2(GET)
             GenStringCase2(STRLEN)
             GenStringCase3(SET)
@@ -197,8 +225,9 @@ private:
             GenStringCase3(DECRBY)
             GenStringCase3(INCRBY)
             GenStringCase3(SETNX)
-            GenStringCase3(SETEX)
             GenStringCase3(PSETEX)
+            GenStringCase4(SETEX)
+            GenStringCase4(GETRANGE)
         default:
         {
             return -1;
@@ -206,32 +235,41 @@ private:
         };
     }
 
-    std::string deserialize(std::vector<char> &buff, uint32_t size, Command cmd_type)
+    std::vector<std::string> deserialize(std::vector<char> &buff, uint32_t size, Command cmd_type)
     {
         switch (cmd_type)
         {
+            case Command::PARAM_ERR:{
+                return {"Param error"};
+            }
             case Command::EXIST_ERR:{
-                return "Key already exist";
+                return {"Key already exist"};
             }
             case Command::NOTEXIST_ERR:{
-                return "Key not exist";
+                return {"Key not exist"};
             }
             case Command::NOTMATCH_ERR:{
-                return "Key type not match";
+                return {"Key type not match"};
             }
             case Command::STRING_OK:
             {
                 STRING_OK_REPLY reply;
                 reply.ParseFromArray(&buff[0], size);
-                return reply.value();
+                return {reply.value()};
             }
             case Command::INT_OK:
             {
                 INT_OK_REPLY reply;
                 reply.ParseFromArray(&buff[0], size);
-                return std::to_string(reply.value());
+                return {std::to_string(reply.value())};
+            }
+            case Command::REPEATED_STRING_OK:
+            {
+                REPEATED_STRING_OK_REPLY reply;
+                reply.ParseFromArray(&buff[0], size);
+                return std::vector<std::string>(reply.value().begin(), reply.value().end());
             }
         }
-        return "";
+        return {};
     }
 };

@@ -43,6 +43,14 @@ public:
         db.erase(key);
     }
 
+    std::vector<std::string> KEYS(uint8_t db_index) {
+        std::vector<std::string> ans;
+        for (auto &it : this->dbs[db_index]) {
+            ans.push_back(it.first);
+        }
+        return ans;
+    }
+
 private:
     friend class Singleton<Database>;
     Database() : dbs(std::vector<std::unordered_map<std::string, boost::intrusive_ptr<Object>>>(16)) {}

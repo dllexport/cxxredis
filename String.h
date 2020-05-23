@@ -19,12 +19,23 @@ public:
         return boost::any_cast<const std::string &>(object->any);
     }
 
-    static std::string_view GETRANGE(uint8_t db_index, const std::string &&key, int32_t start, int32_t end)
+    static std::pair<uint32_t, std::string> GETRANGE(uint8_t db_index, const std::string &&key, std::string&& start_str, std::string&& end_str)
     {
         auto db = Database::GetInstance();
         auto object = db->Get(db_index, std::forward<const std::string>(key));
-        if (!object || object->encoding != ENCODING_TYPE::STRING)
-            return String::empty;
+        if (!object)
+            return {(uint32_t)Command::NOTEXIST_ERR, String::empty};
+        if (object->encoding != ENCODING_TYPE::STRING)
+            return {(uint32_t)Command::NOTMATCH_ERR, String::empty};
+
+        int32_t start;
+        int32_t end;
+        try {
+            start = boost::lexical_cast<int32_t>(start_str);
+            end = boost::lexical_cast<int32_t>(end_str);
+        } catch (...) {
+            return {(uint32_t)Command::PARAM_ERR, String::empty};
+        }
         auto &str = boost::any_cast<const std::string &>(object->any);
         auto size = str.size();
         if (start < 0)
@@ -32,8 +43,8 @@ public:
         if (end < 0)
             end += size;
         if (start < 0 && end < 0 && end < start)
-            return String::empty;
-        return std::string_view(str).substr(start % size, (end - start) % size + 1);
+            return {(uint32_t)Command::PARAM_ERR, String::empty};
+        return {(uint32_t)Command::OK, str.substr(start % size, (end - start) % size + 1)};
     }
 
     // return <err, string>

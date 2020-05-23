@@ -23,6 +23,12 @@ enum Command {
   NOTEXIST_ERR = 19;
   NOTMATCH_ERR = 20;
   PARAM_ERR = 21;
+  REPEATED_STRING_OK = 22;
+
+  KEYS = 23;
+}
+message REPEATED_STRING_OK_REPLY {
+  repeated string value = 1;
 }
 
 message INT_OK_REPLY {
@@ -86,11 +92,17 @@ message CMD_SETNX_REQ {
 message CMD_SETEX_REQ {
   string key = 1;
   string value = 2;
-  string  expire_time = 3;
+  string value2 = 3;
 }
 
 message CMD_PSETEX_REQ {
   string key = 1;
   string value = 2;
-  string  expire_time = 3;
+  string value2 = 3;
+}
+
+message CMD_GETRANGE_REQ {
+  string key = 1;
+  string value = 2;
+  string value2 = 3;
 }

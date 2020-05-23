@@ -86,6 +86,12 @@ public:
                                         }
                                         switch (cmd_type)
                                         {
+                                            case Command::KEYS:
+                                            {
+                                                auto db = Database::GetInstance();
+                                                replyRepeatedStringOK(db->KEYS(0));
+                                                break;
+                                            }
                                             case Command::SET:
                                             {
                                                 CMD_SET_REQ req;
@@ -98,7 +104,7 @@ public:
                                             {
                                                 CMD_SETEX_REQ req;
                                                 req.ParseFromArray(&buff[0], bytes_transferred);
-                                                auto pair = String::SETEX(0, std::string(req.key()), std::move(*req.mutable_value()), std::move(*req.mutable_expire_time()));
+                                                auto pair = String::SETEX(0, std::string(req.key()), std::move(*req.mutable_value()), std::move(*req.mutable_value2()));
                                                 if (pair.first == (uint32_t)Command::OK)
                                                     replyIntOK(pair.second);
                                                 else
@@ -106,13 +112,24 @@ public:
                                                 break;
                                             }
                                             case Command::GET:
-                                        {
-                                            CMD_GET_REQ req;
-                                            req.ParseFromArray(&buff[0], bytes_transferred);
-                                            auto &str = String::GET(0, std::string(req.key()));
-                                            replyStringOK(str);
-                                            break;
-                                        }
+                                            {
+                                                CMD_GET_REQ req;
+                                                req.ParseFromArray(&buff[0], bytes_transferred);
+                                                auto &str = String::GET(0, std::string(req.key()));
+                                                replyStringOK(str);
+                                                break;
+                                            }
+                                            case Command::GETRANGE:
+                                            {
+                                                CMD_GETRANGE_REQ req;
+                                                req.ParseFromArray(&buff[0], bytes_transferred);
+                                                auto pair = String::GETRANGE(0, std::string(req.key()), std::move(*req.mutable_value()), std::move(*req.mutable_value2()));
+                                                if (pair.first == (uint32_t)Command::OK)
+                                                    replyStringOK(pair.second);
+                                                else
+                                                    replyErr((uint32_t)pair.first);
+                                                break;
+                                            }
                                             GenStringCase3(SETNX, replyIntOK)
                                             GenStringCase3(GETSET, replyStringOK)
                                             GenStringCase2(INCR,replyStringOK)
@@ -135,6 +152,8 @@ public:
     void replyIntOK(int code);
 
     void replyStringOK(const std::string &str);
+
+    void replyRepeatedStringOK(std::vector<std::string> &&strs);
 
     void replyErr(int code);
 
