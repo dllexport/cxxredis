@@ -45,8 +45,16 @@ public:
 
     std::vector<std::string> KEYS(uint8_t db_index) {
         std::vector<std::string> ans;
-        for (auto &it : this->dbs[db_index]) {
-            ans.push_back(it.first);
+        auto& db = this->dbs[db_index];
+        auto it = std::begin(db);
+        while(it != std::end(db)) {
+            // clear expired key
+            if (it->second->Expired())
+                it = db.erase(it);
+            else {
+                ans.push_back(it->first);
+                ++it;
+            }
         }
         return ans;
     }

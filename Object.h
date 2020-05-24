@@ -11,6 +11,7 @@
 
 #include "SmartPtr.h"
 using Clock = std::chrono::time_point<std::chrono::system_clock>;
+static const Clock DefaultClock;
 
 enum class ENCODING_TYPE : uint8_t {
     NONE = 0,
@@ -76,13 +77,18 @@ struct Object : public SmartPtr<Object> {
     }
 
     bool Expired() {
+        if (expire_time == DefaultClock) return false;
         auto now = std::chrono::system_clock::now();
-        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(now - expire_time).count();
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(expire_time - now).count();
         return diff < 0;
     }
 
     void SetExpire(Clock&& time) {
         this->expire_time = time;
+    }
+
+    void ClearExpire() {
+        this->expire_time = DefaultClock;
     }
 
     ENCODING_TYPE encoding;

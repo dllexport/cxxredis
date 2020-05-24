@@ -111,6 +111,17 @@ public:
                                                     replyErr((uint32_t)pair.first);
                                                 break;
                                             }
+                                            case Command::PSETEX:
+                                            {
+                                                CMD_SETEX_REQ req;
+                                                req.ParseFromArray(&buff[0], bytes_transferred);
+                                                auto pair = String::PSETEX(0, std::string(req.key()), std::move(*req.mutable_value()), std::move(*req.mutable_value2()));
+                                                if (pair.first == (uint32_t)Command::OK)
+                                                    replyIntOK(pair.second);
+                                                else
+                                                    replyErr((uint32_t)pair.first);
+                                                break;
+                                            }
                                             case Command::GET:
                                             {
                                                 CMD_GET_REQ req;
@@ -135,7 +146,7 @@ public:
                                             GenStringCase2(INCR,replyStringOK)
                                             GenStringCase2(DECR,replyStringOK)
                                             GenStringCase2(STRLEN,replyIntOK)
-                                            GenStringCase3(APPEND,replyStringOK)
+                                            GenStringCase3(APPEND,replyIntOK)
                                             GenStringCase3(INCRBY,replyStringOK)
                                             GenStringCase3(DECRBY,replyStringOK)
 

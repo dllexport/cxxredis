@@ -66,46 +66,31 @@ public:
             return {(int)Command::NOTMATCH_ERR, String::empty};
         }
         result = boost::any_cast<std::string>(object->any);
+        // clear expiration
+        object->ClearExpire();
         object->any = std::forward<std::string &&>(value);
         return {(int)Command::OK, result};
     }
 
-    static std::pair<bool, uint32_t> STRLEN(uint8_t db_index, const std::string &&key)
+    static std::pair<uint32_t, uint32_t> STRLEN(uint8_t db_index, const std::string &&key)
     {
         auto db = Database::GetInstance();
         auto object = db->Get(db_index, std::forward<const std::string>(key));
         if (!object)
-            return {false, (int)Command::NOTEXIST_ERR};
+            return {(uint32_t)Command::NOTEXIST_ERR, 0};
         if (object->encoding == ENCODING_TYPE::STRING)
-            return {true, boost::any_cast<const std::string &>(object->any).size()};
-        return {false, (int)Command::NOTMATCH_ERR};
+            return {(uint32_t)Command::OK, boost::any_cast<const std::string &>(object->any).size()};
+        return {(uint32_t)Command::NOTMATCH_ERR, 0};
     }
 
     static std::pair<uint32_t, uint32_t> SETEX(uint8_t db_index, const std::string &&key, std::string &&value, std::string &&expire_time)
     {
-        auto db = Database::GetInstance();
-        uint32_t end_time = 0;
-        try {
-            end_time = boost::lexical_cast<uint32_t>(expire_time);
-        }catch(...) {
-            return {Command::PARAM_ERR, 0};
-        }
-        db->Set(db_index,
-                       std::forward<const std::string &&>(key),
-                       new Object(ENCODING_TYPE::STRING,
-                                  std::forward<std::string &&>(value),
-                                  std::chrono::system_clock::now() + std::chrono::seconds(end_time)));
-        return {Command::OK, 1};
+        return SetExOP(db_index, std::forward<const std::string &&>(key), std::forward<std::string &&>(value), std::forward<std::string &&>(expire_time), true);
     }
 
-    static uint8_t PSETEX(uint8_t db_index, const std::string &&key, std::string &&value, uint32_t expire_time)
+    static std::pair<uint32_t, uint32_t> PSETEX(uint8_t db_index, const std::string &&key, std::string &&value, std::string &&expire_time)
     {
-        auto db = Database::GetInstance();
-        return db->Set(db_index,
-                       std::forward<const std::string &&>(key),
-                       new Object(ENCODING_TYPE::STRING,
-                                  std::forward<std::string &&>(value),
-                                  std::chrono::system_clock::now() + std::chrono::milliseconds(expire_time)));
+        return SetExOP(db_index, std::forward<const std::string &&>(key), std::forward<std::string &&>(value), std::forward<std::string &&>(expire_time), false);
     }
 
     static uint8_t SET(uint8_t db_index, const std::string &&key, std::string &&value)
@@ -155,19 +140,19 @@ public:
      * return total len
      * return 0 if failed
      */
-    static std::pair<uint32_t, const std::string &> APPEND(uint8_t db_index, const std::string &&key, std::string &&append_value)
+    static std::pair<uint32_t, uint32_t> APPEND(uint8_t db_index, const std::string &&key, std::string &&append_value)
     {
         auto db = Database::GetInstance();
         auto object = db->Get(db_index, std::forward<const std::string>(key));
         if (!object)
-            return {(uint32_t)Command::NOTEXIST_ERR, String::empty};
+            return {(uint32_t)Command::NOTEXIST_ERR, 0};
         if (object->encoding != ENCODING_TYPE::STRING)
         {
-            return {(uint32_t)Command::NOTMATCH_ERR, String::empty};
+            return {(uint32_t)Command::NOTMATCH_ERR, 0};
         }
         auto &str = boost::any_cast<std::string &>(object->any);
         str.append(std::forward<std::string &&>(append_value));
-        return {(uint32_t)Command::OK, str};
+        return {(uint32_t)Command::OK, str.size()};
     }
 
 private:
@@ -203,5 +188,28 @@ private:
         }
 
         return {Command::NOTMATCH_ERR, String::empty};
+    }
+
+
+    // sec_or_msec
+    // true for sec false for msec
+    static std::pair<uint32_t, uint32_t> SetExOP(uint8_t db_index, const std::string &&key, std::string &&value, std::string && expire_time, bool sec_or_msec)
+    {
+        auto db = Database::GetInstance();
+        uint32_t end_time = 0;
+        try {
+            end_time = boost::lexical_cast<uint32_t>(expire_time);
+        }catch(...) {
+            return {Command::PARAM_ERR, 0};
+        }
+
+        std::chrono::milliseconds time_to_plus = sec_or_msec ? std::chrono::seconds(end_time) : std::chrono::milliseconds(end_time);
+
+        db->Set(db_index,
+                std::forward<const std::string &&>(key),
+                new Object(ENCODING_TYPE::STRING,
+                           std::forward<std::string &&>(value),
+                           std::chrono::system_clock::now() + time_to_plus));
+        return {Command::OK, 1};
     }
 };

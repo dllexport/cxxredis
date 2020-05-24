@@ -225,7 +225,7 @@ private:
             GenStringCase3(DECRBY)
             GenStringCase3(INCRBY)
             GenStringCase3(SETNX)
-            GenStringCase3(PSETEX)
+            GenStringCase4(PSETEX)
             GenStringCase4(SETEX)
             GenStringCase4(GETRANGE)
         default:
