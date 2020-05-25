@@ -39,6 +39,16 @@ namespace cxxredis {
                 }
             }
 
+            static ListNode* ListIndexAt(ListHead* head, uint32_t index) {
+                if (index + 1 > head->count) {
+                    return nullptr;
+                }
+                auto p = head->first;
+                while(index--) {
+                    p = p->next;
+                }
+                return p;
+            }
         };
     }
 }

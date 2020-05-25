@@ -155,9 +155,9 @@ public:
         return {(uint32_t)Command::OK, str.size()};
     }
 
+    static const std::string empty;
 private:
     ~String() = delete;
-    static const std::string empty;
     static std::pair<uint32_t, const std::string &> IncrDecrbyOP(uint8_t db_index, const std::string &&key, std::string &&by, bool incr)
     {
         auto db = Database::GetInstance();

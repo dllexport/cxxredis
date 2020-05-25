@@ -13,34 +13,47 @@ namespace cxxredis {
     namespace list {
         class List {
         public:
-//    /*
-//     * return 0 if key not exist
-//     * return > 0 if key exist
-//     * there's no 0 length list cause it will be removed from hash_map
-//     */
-//    static uint64_t LENGTH(uint8_t db_index, const std::string&& key) {
-//        auto& list_find = List::find(db_index, std::forward<const std::string>(key));
-//        if (list_find != Object::NONE_OBJECT) {
-//            auto list_head = boost::any_cast<ListHead>(list_find.any);
-//            return list_head.count;
-//        }
-//        return 0;
-//    }
+
+            static std::pair<uint32_t, uint32_t> LENGTH(uint8_t db_index, const std::string&& key) {
+                auto db = Database::GetInstance();
+                auto object = db->Get(db_index, std::forward<const std::string>(key));
+                if (!object) {
+                    return {(uint32_t) Command::NOTEXIST_ERR, 0};
+                }
+                if (object->encoding != ENCODING_TYPE::LIST) {
+                    return {(uint32_t) Command::NOTMATCH_ERR, 0};
+                }
+                auto& head = boost::any_cast<ListHead&>(object->any);
+                return {(uint32_t) Command::OK, head.count};
+            }
 //
 //
-//    static const ListData* LIndex(uint8_t db_index, const std::string&& key, uint64_t lindex) {
-//        auto& list_find = List::find(db_index, std::forward<const std::string>(key));
-//        if (list_find == Object::NONE_OBJECT) return nullptr;
-//
-//        auto list_head = boost::any_cast<ListHead>(list_find.any);
-//        if (lindex >= list_head.count)return nullptr;
-//
-//        auto p = list_head.first;
-//        while(lindex--)
-//            p = p->next;
-//        return p;
-//    }
-//
+            static std::pair<uint32_t, const std::string &>  LINDEX(uint8_t db_index, const std::string&& key, std::string&& lindex) {
+                auto db = Database::GetInstance();
+                auto object = db->Get(db_index, std::forward<const std::string>(key));
+                if (!object) {
+                    return {(uint32_t) Command::NOTEXIST_ERR, String::empty};
+                }
+                if (object->encoding != ENCODING_TYPE::LIST) {
+                    return {(uint32_t) Command::NOTMATCH_ERR, String::empty};
+                }
+                auto& head = boost::any_cast<ListHead&>(object->any);
+                uint32_t index = 0;
+                try
+                {
+                    index = boost::lexical_cast<uint32_t>(lindex);
+                }
+                catch (...)
+                {
+                    return {Command::PARAM_ERR, String::empty};
+                }
+                auto pair_res = ListOps::ListIndexAt(&head, index);
+
+                if (pair_res)
+                    return {Command::OK, pair_res->payload};
+                return {Command::NOTEXIST_ERR, pair_res->payload};
+            }
+
 //          // push element at front
             /*
              * push 1 or multiple value to the head of the list
