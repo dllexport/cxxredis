@@ -9,7 +9,7 @@
 #include "Primitives/Object.h"
 #include "Utils/Singleton.h"
 #include <boost/intrusive_ptr.hpp>
-#include "Persistence/Serialization.h"
+#include "Persistence/Serialization/SerialObject.h"
 #include <boost/serialization/unordered_map.hpp>
 #include <boost/serialization/vector.hpp>
 
