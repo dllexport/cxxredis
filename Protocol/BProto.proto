@@ -25,8 +25,9 @@ enum Command {
   PARAM_ERR = 21;
   OUT_OF_RANGE_ERR = 22;
   REPEATED_STRING_OK = 23;
-
-  KEYS = 24;
+  SAVE = 24;
+  BGSAVE = 25;
+  KEYS = 26;
 }
 message REPEATED_STRING_OK_REPLY {
   repeated string value = 1;

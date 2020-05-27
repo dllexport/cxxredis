@@ -74,4 +74,20 @@ private:
     ///should be modifiable even from const intrusive_ptr objects
     mutable uint64_t ref_count;
 
+    friend class boost::serialization::access;
+    template<class Archive>
+    void save(Archive & ar, const unsigned int version) const
+    {
+        --ref_count;
+        ar & ref_count;
+        ++ref_count;
+    }
+
+    template<class Archive>
+    void load(Archive & ar, const unsigned int version)
+    {
+        ar & ref_count;
+    }
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
+
 };

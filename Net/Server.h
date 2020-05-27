@@ -7,6 +7,7 @@
 #include <boost/asio/read.hpp>
 #include "../Protocol/bproto.h"
 #include "../String.h"
+#include "../Persistence/Dump.h"
 #include "HandleAlloc.h"
 
 #define Q(x) #x
@@ -86,6 +87,18 @@ public:
                                         }
                                         switch (cmd_type)
                                         {
+                                            case Command::SAVE:
+                                            {
+                                                Dump::SAVE();
+                                                replyOK();
+                                                break;
+                                            }
+                                            case Command::BGSAVE:
+                                            {
+                                                Dump::BGSAVE();
+                                                replyOK();
+                                                break;
+                                            }
                                             case Command::KEYS:
                                             {
                                                 auto db = Database::GetInstance();

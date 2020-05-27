@@ -215,6 +215,22 @@ private:
                 return BProtoHeader::Size();
                 break;
             }
+            case str2int("SAVE"): {
+                if (parts.size() != 1) return false;
+                auto header = (BProtoHeader *) &buff[0];
+                header->payload_len = 0;
+                header->payload_cmd = Command::SAVE;
+                return BProtoHeader::Size();
+                break;
+            }
+            case str2int("BGSAVE"): {
+                if (parts.size() != 1) return false;
+                auto header = (BProtoHeader *) &buff[0];
+                header->payload_len = 0;
+                header->payload_cmd = Command::BGSAVE;
+                return BProtoHeader::Size();
+                break;
+            }
             GenStringCase2(GET)
             GenStringCase2(STRLEN)
             GenStringCase3(SET)

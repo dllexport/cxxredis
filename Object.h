@@ -8,7 +8,9 @@
 #include <chrono>
 #include <iostream>
 #include <time.h>
-
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/binary_object.hpp>
+#include <boost/lexical_cast.hpp>
 #include "SmartPtr.h"
 using Clock = std::chrono::time_point<std::chrono::system_clock>;
 static const Clock DefaultClock;
@@ -22,6 +24,9 @@ enum class ENCODING_TYPE : uint8_t {
 };
 
 struct Object : public SmartPtr<Object> {
+
+    Object() : encoding(ENCODING_TYPE::NONE), any(nullptr), expire_time() {}
+
     template<class Any>
     Object(ENCODING_TYPE encoding_type, Any any) : encoding(encoding_type), any(any) {}
 
@@ -97,6 +102,38 @@ struct Object : public SmartPtr<Object> {
 
 private:
     Clock expire_time;
+
+    friend class boost::serialization::access;
+
+    template<class Archive>
+    void save(Archive & ar, const unsigned int version) const
+    {
+        ar & boost::serialization::base_object<SmartPtr<Object>>(*this);
+        ar & encoding;
+        ar & boost::serialization::make_binary_object(&expire_time, sizeof(Clock));
+        switch (encoding) {
+            case ENCODING_TYPE::STRING: {
+                std::string test = boost::any_cast<std::string>(any);
+                ar & boost::serialization::make_nvp("string", test);
+            }
+        }
+    }
+
+    template<class Archive>
+    void load(Archive & ar, const unsigned int version)
+    {
+        ar & boost::serialization::base_object<SmartPtr<Object>>(*this);
+        ar & encoding;
+        ar & boost::serialization::make_binary_object(&expire_time, sizeof(Clock));
+        switch (encoding) {
+            case ENCODING_TYPE::STRING: {
+                std::string str_load;
+                ar & boost::serialization::make_nvp("string", str_load);
+                any = str_load;
+            }
+        }
+    }
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 };
 
 
