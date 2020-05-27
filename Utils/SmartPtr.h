@@ -7,7 +7,8 @@
 #include <stdint.h>
 #include <iostream>
 #include <boost/checked_delete.hpp>
-
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/split_member.hpp>
 
 template<class T>
 class SmartPtr {
@@ -75,6 +76,7 @@ private:
     mutable uint64_t ref_count;
 
     friend class boost::serialization::access;
+
     template<class Archive>
     void save(Archive & ar, const unsigned int version) const
     {
@@ -88,6 +90,6 @@ private:
     {
         ar & ref_count;
     }
-    BOOST_SERIALIZATION_SPLIT_MEMBER()
 
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 };

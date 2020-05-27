@@ -6,7 +6,7 @@
 
 #include <boost/serialization/serialization.hpp>
 #include <boost/intrusive_ptr.hpp>
-#include "../Object.h"
+#include "../Primitives/Object.h"
 
 BOOST_SERIALIZATION_SPLIT_FREE(boost::intrusive_ptr<Object>)
 

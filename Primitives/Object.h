@@ -11,16 +11,14 @@
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/binary_object.hpp>
 #include <boost/lexical_cast.hpp>
-#include "SmartPtr.h"
+#include "../Utils/SmartPtr.h"
 using Clock = std::chrono::time_point<std::chrono::system_clock>;
 static const Clock DefaultClock;
 
 enum class ENCODING_TYPE : uint8_t {
     NONE = 0,
     STRING = 1,
-    INTEGER = 1 << 1,
-    FLOAT = 1 << 2,
-    LIST = 1 << 3,
+    LIST = 1 << 2,
 };
 
 struct Object : public SmartPtr<Object> {
@@ -61,40 +59,23 @@ struct Object : public SmartPtr<Object> {
 #endif
     }
 
-    Object Clone() {
-        return *this;
-    }
+    Object Clone();
 
-    Object& operator=(Object&& rhs) noexcept {
-        if (this == &rhs)
-            return *this;
-        this->any.clear();
-        ::new(this)Object(std::move(rhs));
-        return *this;
-    }
+    Object& operator=(Object&& rhs) noexcept;
 
-    bool operator == (Object const& rhs) const {
+    bool operator==(Object const& rhs) const {
         return this == &rhs;
     }
 
-    bool operator != (Object const& rhs) const {
+    bool operator!=(Object const& rhs) const {
         return this != &rhs;
     }
 
-    bool Expired() {
-        if (expire_time == DefaultClock) return false;
-        auto now = std::chrono::system_clock::now();
-        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(expire_time - now).count();
-        return diff < 0;
-    }
+    bool Expired();
 
-    void SetExpire(Clock&& time) {
-        this->expire_time = time;
-    }
+    void SetExpire(Clock&& time);
 
-    void ClearExpire() {
-        this->expire_time = DefaultClock;
-    }
+    void ClearExpire();
 
     ENCODING_TYPE encoding;
     boost::any any;

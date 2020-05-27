@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include "Object.h"
+#include "Primitives/Object.h"
 #include "Utils/Singleton.h"
 #include <boost/intrusive_ptr.hpp>
 #include "Persistence/Serialization.h"
