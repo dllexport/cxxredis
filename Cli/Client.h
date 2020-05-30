@@ -231,6 +231,18 @@ private:
                 return BProtoHeader::Size();
                 break;
             }
+            case str2int("SELECT"): {
+                if (parts.size() != 2)return false;
+                universal_command::SELECT_REQ req;
+                req.set_db(parts[1]);
+                auto serial_size = req.ByteSizeLong();
+                if (serial_size > buff.capacity())return false;
+                req.SerializeToArray(&buff[0] + BProtoHeader::Size(), serial_size);
+                auto header = (BProtoHeader *) &buff[0];
+                header->payload_len = serial_size;
+                header->payload_cmd = universal_command::SELECT;
+                return BProtoHeader::Size() + serial_size;
+            }
             GenStringCase2(GET)
             GenStringCase2(STRLEN)
             GenStringCase3(SET)
@@ -251,7 +263,7 @@ private:
         };
     }
 
-    std::vector<std::string> deserialize(std::vector<char> &buff, uint32_t size, Command cmd_type)
+    std::vector<std::string> deserialize(std::vector<char> &buff, uint32_t size, int cmd_type)
     {
         switch (cmd_type)
         {

@@ -10,6 +10,7 @@
 #include <boost/asio/spawn.hpp>
 #include "../Utils/Singleton.h"
 #include "Session.h"
+#include "IOExecutor.h"
 
 class IOTransfer : public Singleton<IOTransfer> {
 
@@ -18,8 +19,6 @@ class IOTransfer : public Singleton<IOTransfer> {
     struct transfer_state {
         std::unique_ptr<UnixSocket> low_socket;
         std::unique_ptr<UnixSocket> high_socket;
-        uint32_t low_fd = 0;
-        uint32_t high_fd = 0;
     };
 
     int genTransferKey(int from, int to) {
@@ -29,15 +28,17 @@ class IOTransfer : public Singleton<IOTransfer> {
 public:
     IOTransfer() {}
 
-    void Init(std::vector<boost::asio::io_context>& io_contexts) {
+    void Init() {
+
+        auto& io_contexts = IOExecutor::GetInstance()->GetContexts();
 
         for (int i = 0 ; i <= io_contexts.size() - 1; ++i) {
-            this->transfer_index_map.insert({&io_contexts[i], i});
+            this->transfer_index_map.insert({&io_contexts[i].get_executor().context(), i});
         }
 
         for (int i = 0; i <= io_contexts.size() - 2; ++i) {
             for (int j = i + 1; j <= io_contexts.size() - 1; ++j) {
-                auto state = std::make_unique<transfer_state>();
+                auto state = std::make_shared<transfer_state>();
                 state->low_socket = std::make_unique<UnixSocket>(io_contexts[i]);
                 state->high_socket = std::make_unique<UnixSocket>(io_contexts[j]);
                 boost::asio::local::connect_pair(*state->low_socket, *state->high_socket);
@@ -52,10 +53,13 @@ public:
                 boost::asio::spawn([&, this](boost::asio::yield_context yield){
                     boost::system::error_code ec;
                     auto& state = this->transfer_map[genTransferKey(i, j)];
+                    int recv_fd = -1;
                     while(1) {
-                        state->low_socket->async_receive(boost::asio::buffer(&state->low_fd, sizeof(uint32_t)), yield[ec]);
-                        auto session = boost::intrusive_ptr<Session>(new Session(this->io_contexts[i]));
-
+                        state->low_socket->async_receive(boost::asio::buffer(&recv_fd, 4), yield[ec]);
+                        auto session = boost::intrusive_ptr<Session>(new Session(io_contexts[i]));
+                        session->peer.assign(boost::asio::ip::tcp::v4(), recv_fd);
+                        session->replyOK();
+                        recv_fd = -1;
                     }
                 });
 
@@ -64,17 +68,56 @@ public:
                 boost::asio::spawn([&, this](boost::asio::yield_context yield){
                     boost::system::error_code ec;
                     auto& state = this->transfer_map[genTransferKey(i, j)];
-                    state->high_socket->async_receive(boost::asio::buffer(&state->high_fd, sizeof(uint32_t)), yield[ec]);
+                    int recv_fd = -1;
+                    while(1) {
+                        state->high_socket->async_receive(boost::asio::buffer(&recv_fd, 4), yield[ec]);
+                        auto session = boost::intrusive_ptr<Session>(new Session(io_contexts[i]));
+                        session->peer.assign(boost::asio::ip::tcp::v4(), recv_fd);
+                        session->replyOK();
+                        recv_fd = -1;
+                    }
                 });
             }
         }
 
     }
 
+    /*
+     * return true if transfer complete
+     * return false if transfer is not needed
+     */
+    bool doTransfer(boost::intrusive_ptr<Session> session, uint32_t target_db_idx) {
+        auto& io_contexts = IOExecutor::GetInstance()->GetContexts();
+
+        uint32_t to_idx = target_db_idx % io_contexts.size();
+        auto io_context = static_cast<boost::asio::io_context*>(&session->peer.get_executor().context());
+        uint32_t from_idx = transfer_index_map[io_context];
+        if (from_idx == to_idx) return false;
+
+        auto low = std::min(from_idx, to_idx);
+        auto high = std::max(from_idx, to_idx);
+
+        auto transfer_state = this->transfer_map[genTransferKey(low, high)];
+
+        auto fd = session->peer.release();
+        *(int*)session->buff.data() = fd;
+
+        // if we are transfering to high
+        if (low == from_idx) {
+            transfer_state->high_socket->async_send(boost::asio::buffer(session->buff.data(), 4), [session](...){});
+        }else if (low == to_idx) {
+            transfer_state->low_socket->async_send(boost::asio::buffer(session->buff.data(), 4), [session](...){});
+        }else {
+            printf("should not reach this line\n");
+            exit(-1);
+        }
+    }
+
 private:
+
     // we build an idx map for io_context so that we could find where the ctx is located
     std::unordered_map<boost::asio::io_context*, int> transfer_index_map;
-    std::unordered_map<int, std::unique_ptr<transfer_state>> transfer_map;
+    std::unordered_map<int, std::shared_ptr<transfer_state>> transfer_map;
 };
 
 

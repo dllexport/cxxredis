@@ -21,7 +21,7 @@ public:
 
     void readHeader();
 
-    void readPayload(uint32_t size, Command cmd_type);
+    void readPayload(uint32_t size, int cmd_type);
 
     void replyOK(...);
 

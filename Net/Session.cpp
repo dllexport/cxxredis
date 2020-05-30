@@ -10,6 +10,8 @@
 
 #include "../Protocol/BProto.pb.h"
 
+#include "IOTransfer.h"
+
 #define Q(x) #x
 #define QUOTE(x) Q(x)
 #define GENSTRCASE_COMMAND(key) Command::key
@@ -176,7 +178,7 @@ void Session::readHeader()
                                     }));
 }
 
-void Session::readPayload(uint32_t size, Command cmd_type)
+void Session::readPayload(uint32_t size, int cmd_type)
 {
     auto self = this->self();
     boost::asio::async_read(this->peer,
@@ -197,6 +199,10 @@ void Session::readPayload(uint32_t size, Command cmd_type)
                                             {
                                                 universal_command::SELECT_REQ req;
                                                 req.ParseFromArray(&buff[0], bytes_transferred);
+                                                auto db_index = boost::lexical_cast<uint32_t>(req.db());
+                                                auto res = IOTransfer::GetInstance()->doTransfer(this, db_index);
+                                                if (res) return;
+                                                replyOK();
                                                 break;
                                             }
                                             case Command::SAVE:

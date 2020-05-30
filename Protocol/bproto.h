@@ -8,7 +8,7 @@
 
 struct BProtoHeader {
     uint32_t payload_len;
-    Command  payload_cmd;
+    int  payload_cmd;
     constexpr static uint8_t Size() {
         return sizeof(BProtoHeader);
     }

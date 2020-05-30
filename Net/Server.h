@@ -7,19 +7,17 @@
 #include <boost/thread.hpp>
 #include <iostream>
 #include "Session.h"
-#include "../Utils/GetConcurrency.h"
 #include "../Utils/Singleton.h"
 #include "IOTransfer.h"
+#include "IOExecutor.h"
 
 class Server : public Singleton<Server>
 {
 public:
-    Server() : io_contexts(GetConcurrency()) {
+    Server() {}
 
-        // create worker for each io_context
-        for (int i = 0; i < io_contexts.size(); ++i) {
-            this->workers.emplace_back(boost::asio::make_work_guard(io_contexts[i]));
-        }
+    void Init() {
+        auto& io_contexts = IOExecutor::GetInstance()->GetContexts();
 
         auto bind_ep = boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 6666);
         boost::system::error_code ec;
@@ -44,31 +42,17 @@ public:
             }
 
             acceptors.back().listen(SOMAXCONN, ec);
+
+            runAccept(i);
         }
 
-        IOTransfer::GetInstance()->Init(this->io_contexts);
-    }
-
-    void Run()
-    {
-        for (int i = 0; i < io_contexts.size(); ++i) {
-            this->thread_group.create_thread([this, i](){
-                runAccept(i);
-                this->io_contexts[i].run();
-            });
-        }
-        this->thread_group.join_all();
+        IOTransfer::GetInstance()->Init();
     }
 
 private:
-    using IOContext = boost::asio::io_context;
-    using Worker = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
     using Acceptor = boost::asio::ip::tcp::acceptor;
 
-    boost::thread_group thread_group;
-    std::vector<IOContext> io_contexts;
-    std::vector<Worker> workers;
     std::vector<Acceptor> acceptors;
 
-    void runAccept(int i);
+    void runAccept(int which);
 };

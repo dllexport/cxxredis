@@ -43,8 +43,12 @@ if(Boost_FOUND)
             State/Memory.cpp State/Memory.h
             Utils/RSS.h Utils/RSS.cpp
             Utils/GetConcurrency.h Utils/GetConcurrency.cpp
-            Protocol/bproto.h Protocol/BProto.pb.cc Protocol/universal.pb.cc State/Config.cpp State/Config.h Net/IOTransfer.cpp Net/IOTransfer.h Net/IOExecutor.h)
-    add_executable(cxxredis-cli Cli/main.cpp Cli/Client.h Cli/Client.cpp Protocol/bproto.h Utils/linenoise.h Utils/linenoise.c)
+            Protocol/bproto.h Protocol/BProto.pb.h Protocol/BProto.pb.cc Protocol/universal.pb.h Protocol/universal.pb.cc State/Config.cpp State/Config.h Net/IOTransfer.cpp Net/IOTransfer.h Net/IOExecutor.h)
+    add_executable(cxxredis-cli Cli/main.cpp
+            Cli/Client.h Cli/Client.cpp
+            Protocol/bproto.h
+            Utils/linenoise.h Utils/linenoise.c
+            Protocol/BProto.pb.h Protocol/BProto.pb.cc Protocol/universal.pb.h Protocol/universal.pb.cc)
     target_link_libraries (cxxredis-cli /usr/local/Cellar/protobuf/3.12.1/lib/libprotobuf.a)
     target_link_libraries (cxxredis-cli /usr/local/Cellar/protobuf/3.12.1/lib/libprotoc.a)
     target_link_libraries (cxxredis-cli ${Boost_LIBRARIES})
