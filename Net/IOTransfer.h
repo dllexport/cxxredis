@@ -43,6 +43,8 @@ public:
                 state->high_socket = std::make_unique<UnixSocket>(io_contexts[j]);
                 boost::asio::local::connect_pair(*state->low_socket, *state->high_socket);
 
+                auto res = state->low_socket->is_open();
+
                 this->transfer_map.insert({
                     genTransferKey(i, j),
                     std::move(state)
@@ -50,30 +52,42 @@ public:
 
                 // read from low_fd
                 // send from high idx to low idx, from j to i
-                boost::asio::spawn([&, this](boost::asio::yield_context yield){
+                boost::asio::spawn([i, j, this](boost::asio::yield_context yield){
+                    auto& io_contexts = IOExecutor::GetInstance()->GetContexts();
                     boost::system::error_code ec;
                     auto& state = this->transfer_map[genTransferKey(i, j)];
                     int recv_fd = -1;
                     while(1) {
                         state->low_socket->async_receive(boost::asio::buffer(&recv_fd, 4), yield[ec]);
+                        if (ec) {
+                            int j = 1;
+                            return;
+                        }
                         auto session = boost::intrusive_ptr<Session>(new Session(io_contexts[i]));
                         session->peer.assign(boost::asio::ip::tcp::v4(), recv_fd);
                         session->replyOK();
+                        session->WaitProcess();
                         recv_fd = -1;
                     }
                 });
 
                 // read from high idx
                 // send from low idx to high idx, from i to j
-                boost::asio::spawn([&, this](boost::asio::yield_context yield){
+                boost::asio::spawn([i, j, this](boost::asio::yield_context yield){
+                    auto& io_contexts = IOExecutor::GetInstance()->GetContexts();
                     boost::system::error_code ec;
                     auto& state = this->transfer_map[genTransferKey(i, j)];
                     int recv_fd = -1;
                     while(1) {
                         state->high_socket->async_receive(boost::asio::buffer(&recv_fd, 4), yield[ec]);
+                        if (ec) {
+                            int j = 1;
+                            return;
+                        }
                         auto session = boost::intrusive_ptr<Session>(new Session(io_contexts[i]));
                         session->peer.assign(boost::asio::ip::tcp::v4(), recv_fd);
                         session->replyOK();
+                        session->WaitProcess();
                         recv_fd = -1;
                     }
                 });
@@ -104,13 +118,15 @@ public:
 
         // if we are transfering to high
         if (low == from_idx) {
-            transfer_state->high_socket->async_send(boost::asio::buffer(session->buff.data(), 4), [session](...){});
-        }else if (low == to_idx) {
             transfer_state->low_socket->async_send(boost::asio::buffer(session->buff.data(), 4), [session](...){});
+        }else if (low == to_idx) {
+            transfer_state->high_socket->async_send(boost::asio::buffer(session->buff.data(), 4), [session](...){});
         }else {
             printf("should not reach this line\n");
             exit(-1);
         }
+
+        return true;
     }
 
 private:

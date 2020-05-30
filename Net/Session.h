@@ -15,7 +15,9 @@ class Session : public SmartPtr<Session>
 public:
     Session(boost::asio::io_context &io) : buff(1024), peer(io) {}
 
-    ~Session() {}
+    ~Session() {
+
+    }
 
     void WaitProcess();
 

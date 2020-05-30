@@ -5,6 +5,7 @@
 #pragma once
 
 #include <boost/serialization/serialization.hpp>
+#include <boost/serialization/split_free.hpp>
 #include <boost/intrusive_ptr.hpp>
 #include "../../Primitives/Object.h"
 

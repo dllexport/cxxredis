@@ -9,6 +9,9 @@
 #include "../Database.h"
 #include <boost/archive/binary_oarchive.hpp>
 #include <fstream>
+#ifdef __linux__
+#include <sys/wait.h>
+#endif
 
 class Dump {
 public:

@@ -7,7 +7,7 @@
 #include "../Database.h"
 #include "../Protocol/bproto.h"
 
-const auto String::empty = std::string("nil");
+const std::string String::empty = std::string("nil");
 
 std::pair<uint32_t, const std::string&> String::GET(uint8_t db_index, const std::string &&key)
 {
