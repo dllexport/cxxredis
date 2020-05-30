@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package universal_command;
+
+enum COMMAND {
+  VOID = 0;
+  OK = 100;
+  SELECT = 101;
+}
+
+message SELECT_REQ {
+  string db = 1;
+}
+
+message REPLY1 {
+  string value = 1;
+}
+
+message REPLY2 {
+  string value1 = 1;
+  string value2 = 2;
+}
+
+message REPLY3 {
+  string value1 = 1;
+  string value2 = 2;
+  string value3 = 3;
+}
+
+message REPLY4 {
+  string value1 = 1;
+  string value2 = 2;
+  string value3 = 3;
+  string value4 = 4;
+}
+
+message REPLY5 {
+  string value1 = 1;
+  string value2 = 2;
+  string value3 = 3;
+  string value4 = 4;
+  string value5 = 5;
+}
+
+message REPLY_ANY {
+  repeated string value1 = 1;
+}

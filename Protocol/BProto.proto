@@ -1,4 +1,7 @@
 syntax = "proto3";
+
+import public "universal.proto";
+
 enum Command {
   OK = 0;
   SET = 1;
@@ -28,7 +31,9 @@ enum Command {
   SAVE = 24;
   BGSAVE = 25;
   KEYS = 26;
+  SELECT = 27;
 }
+
 message REPEATED_STRING_OK_REPLY {
   repeated string value = 1;
 }

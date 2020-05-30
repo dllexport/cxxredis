@@ -8,6 +8,8 @@
 #include <boost/asio/write.hpp>
 #include "../Persistence/Dump.h"
 
+#include "../Protocol/BProto.pb.h"
+
 #define Q(x) #x
 #define QUOTE(x) Q(x)
 #define GENSTRCASE_COMMAND(key) Command::key
@@ -189,8 +191,14 @@ void Session::readPayload(uint32_t size, Command cmd_type)
                                             fflush(stdout);
                                             return;
                                         }
-                                        switch (cmd_type)
+                                        switch ((int)cmd_type)
                                         {
+                                            case universal_command::SELECT:
+                                            {
+                                                universal_command::SELECT_REQ req;
+                                                req.ParseFromArray(&buff[0], bytes_transferred);
+                                                break;
+                                            }
                                             case Command::SAVE:
                                             {
                                                 Dump::SAVE();
@@ -209,7 +217,6 @@ void Session::readPayload(uint32_t size, Command cmd_type)
                                                 replyRepeatedStringOK(db->KEYS(0));
                                                 break;
                                             }
-
                                             GenStringCase2(SET, replyOK)
                                             GenStringCase1(GET, replyStringOK)
                                             GenStringCase3(PSETEX, replyIntOK)
@@ -229,4 +236,10 @@ void Session::readPayload(uint32_t size, Command cmd_type)
                                         };
                                         readHeader();
                                     }));
+}
+
+
+void Session::selectDatabase(int which) {
+
+    this->peer.release();
 }

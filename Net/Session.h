@@ -33,6 +33,10 @@ public:
 
     void replyErr(int code);
 
+    void selectDatabase(int which);
+
+    friend class IOTransfer;
+
     std::vector<uint8_t> buff;
     boost::asio::ip::tcp::socket peer;
     handler_memory handler_memory_;

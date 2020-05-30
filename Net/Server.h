@@ -4,53 +4,71 @@
 
 #pragma once
 #include <boost/asio.hpp>
+#include <boost/thread.hpp>
 #include <iostream>
 #include "Session.h"
+#include "../Utils/GetConcurrency.h"
+#include "../Utils/Singleton.h"
+#include "IOTransfer.h"
 
-class Server
+class Server : public Singleton<Server>
 {
 public:
-    Server() : io_context(BOOST_ASIO_CONCURRENCY_HINT_UNSAFE), acceptor(io_context) {}
+    Server() : io_contexts(GetConcurrency()) {
+
+        // create worker for each io_context
+        for (int i = 0; i < io_contexts.size(); ++i) {
+            this->workers.emplace_back(boost::asio::make_work_guard(io_contexts[i]));
+        }
+
+        auto bind_ep = boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 6666);
+        boost::system::error_code ec;
+
+        for (int i = 0; i < io_contexts.size(); ++i) {
+
+            int opt = 1;
+
+            acceptors.emplace_back(Acceptor(io_contexts[i]));
+            acceptors.back().open(bind_ep.protocol(), ec);
+            if (ec)
+            {
+                return;
+            }
+
+            setsockopt(acceptors.back().native_handle(), SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
+
+            acceptors.back().bind(bind_ep, ec);
+            if (ec)
+            {
+                return;
+            }
+
+            acceptors.back().listen(SOMAXCONN, ec);
+        }
+
+        IOTransfer::GetInstance()->Init(this->io_contexts);
+    }
 
     void Run()
     {
-        auto bind_ep = boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 6666);
-        boost::system::error_code ec;
-        acceptor.open(bind_ep.protocol(), ec);
-        boost::asio::ip::tcp::acceptor::reuse_address reuse_address(true);
-        acceptor.set_option(reuse_address);
-        acceptor.bind(bind_ep, ec);
-        if (ec)
-        {
-            std::cout << ec.message() << std::endl;
-            fflush(stdout);
-            return;
-        }
-        acceptor.listen();
-        if (ec)
-        {
-            std::cout << ec.message() << std::endl;
-            fflush(stdout);
-            return;
-        }
-        this->runAccept();
-        this->io_context.run();
-    }
-
-    void runAccept()
-    {
-        auto session = boost::intrusive_ptr<Session>(new Session(this->io_context));
-        acceptor.async_accept(
-            session->peer,
-            [session, this](const boost::system::error_code &ec) {
-                boost::asio::ip::tcp::no_delay option(true);
-                session->peer.set_option(option);
-                session->WaitProcess();
-                this->runAccept();
+        for (int i = 0; i < io_contexts.size(); ++i) {
+            this->thread_group.create_thread([this, i](){
+                runAccept(i);
+                this->io_contexts[i].run();
             });
+        }
+        this->thread_group.join_all();
     }
 
 private:
-    boost::asio::io_context io_context;
-    boost::asio::ip::tcp::acceptor acceptor;
+    using IOContext = boost::asio::io_context;
+    using Worker = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
+    using Acceptor = boost::asio::ip::tcp::acceptor;
+
+    boost::thread_group thread_group;
+    std::vector<IOContext> io_contexts;
+    std::vector<Worker> workers;
+    std::vector<Acceptor> acceptors;
+
+    void runAccept(int i);
 };
