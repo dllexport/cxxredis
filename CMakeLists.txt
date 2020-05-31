@@ -50,7 +50,7 @@ if(Boost_FOUND)
             Protocol/bproto.h
             Utils/linenoise.h Utils/linenoise.c
             Protocol/BProto.pb.h Protocol/BProto.pb.cc Protocol/universal.pb.h Protocol/universal.pb.cc Protocol/string.pb.h Protocol/string.pb.cc Cli/CommandMap.cpp Cli/CommandMap.h Cli/CommandRegistry.h Cli/CommandRegistry.cpp)
-    add_executable(cxxredis-benchmark Benchmark/SET.cpp Cli/CommandRegistry.cpp Protocol/BProto.pb.h Protocol/BProto.pb.cc Protocol/universal.pb.h Protocol/universal.pb.cc Protocol/string.pb.h Protocol/string.pb.cc)
+    add_executable(cxxredis-benchmark Benchmark/GET.cpp Cli/CommandRegistry.cpp Protocol/BProto.pb.h Protocol/BProto.pb.cc Protocol/universal.pb.h Protocol/universal.pb.cc Protocol/string.pb.h Protocol/string.pb.cc)
     target_link_libraries (cxxredis-benchmark ${Boost_LIBRARIES})
     target_link_libraries (cxxredis-cli ${Boost_LIBRARIES})
     target_link_libraries (cxxredis ${Boost_LIBRARIES})
