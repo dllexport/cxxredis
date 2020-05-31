@@ -11,6 +11,8 @@
 #include <iostream>
 #include "../Protocol/bproto.h"
 #include "../Utils/linenoise.h"
+#include <boost/lexical_cast.hpp>
+
 #include <regex>
 #define Q(x) #x
 #define QUOTE(x) Q(x)
@@ -116,7 +118,7 @@ public:
         socket.set_option(option);
         boost::asio::spawn(this->io_context, [this](boost::asio::yield_context yield) {
             boost::system::error_code ec;
-            auto connect_ep = boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::from_string("127.0.0.1"), 6666);
+            auto connect_ep = boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::from_string("192.168.123.147"), 6666);
             this->socket.async_connect(connect_ep, yield[ec]);
             if (ec)
             {
@@ -128,16 +130,19 @@ public:
             linenoiseSetHintsCallback(hints);
 
             char *line;
-            std::vector<char> input(4096);
+//            std::vector<char> input(4096);
             auto t1 = std::chrono::high_resolution_clock::now();
 
-
-
-//            while((line = linenoise("cxxredis> ")) != NULL) {
+            auto remote_ep = this->socket.remote_endpoint();
             while(1) {
-                std::cin.getline(&input.at(0), 4096);
-                line = &input[0];
-//                linenoiseHistoryAdd(line); /* Add to the history. */
+                auto prompt = remote_ep.address().to_string() + ":" + std::to_string(remote_ep.port()) + "[" + std::to_string(db_index) + "]> ";
+                line = linenoise(prompt.c_str());
+                if (!line)
+                    return;
+//            while(1) {
+//                std::cin.getline(&input.at(0), 4096);
+//                line = &input[0];
+                linenoiseHistoryAdd(line); /* Add to the history. */
                 auto line_str = std::string(line);
                 boost::trim_all(line_str);
 
@@ -182,7 +187,7 @@ public:
                 } else if (line[0] == '/') {
                     printf("Unreconized command: %s\n", line);
                 }
-//                free(line);
+                free(line);
             }
 
             auto t2 = std::chrono::high_resolution_clock::now();
@@ -198,6 +203,7 @@ public:
 private:
     boost::asio::io_context io_context;
     boost::asio::ip::tcp::socket socket;
+    uint32_t db_index = 0;
 
     int64_t serialize(std::string &command, std::vector<char> &buff)
     {
@@ -206,10 +212,6 @@ private:
         if (parts.size() == 0)
             return -1;
         parts[0] = boost::to_upper_copy<std::string>(parts[0]);
-        for (auto part : parts) {
-            std::cout << part << "\n";
-            fflush(stdout);
-        }
         switch (str2int(parts[0].c_str()))
         {
             case str2int("KEYS"): {
@@ -252,23 +254,7 @@ private:
             GenStringCase2(STRLEN)
             GenStringCase3(SET)
             GenStringCase3(GETSET)
-//            GenStringCase3(APPEND)
-            case str2int("APPEND"):
-            {
-                if (parts.size() != 3)
-                    return -1;
-                universal_command::REQ2 req;
-                req.set_value1(parts[1]);
-                req.set_value2(parts[2]);
-                auto serial_size = req.ByteSizeLong();
-                if (serial_size > buff.capacity())
-                    return -1;
-                req.SerializeToArray(BProtoHeaderOffset(&buff[0]), serial_size);
-                auto header = (BProtoHeader *)&buff[0];
-                header->payload_len = serial_size;
-                header->payload_cmd = GENSTRCASE_COMMAND(APPEND);
-                return BProtoHeaderSize + serial_size;
-            }
+            GenStringCase3(APPEND)
             GenStringCase2(INCR)
             GenStringCase2(DECR)
             GenStringCase3(DECRBY)
@@ -311,6 +297,13 @@ private:
                 universal_command::INT_REPLY1 reply;
                 reply.ParseFromArray(&buff[0], size);
                 return {std::to_string(reply.value())};
+            }
+            case universal_command::SELECT_OK:
+            {
+                universal_command::INT_REPLY1 reply;
+                reply.ParseFromArray(&buff[0], size);
+                this->db_index = reply.value();
+                return {"OK"};
             }
             case universal_command::REPEATED_STRING_OK:
             {
