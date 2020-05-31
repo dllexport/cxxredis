@@ -16,7 +16,8 @@ public:
     Session(boost::asio::io_context &io) : buff(1024), peer(io) {}
 
     ~Session() {
-
+        std::cout << "session die\n";
+        fflush(stdout);
     }
 
     void WaitProcess();
@@ -35,14 +36,12 @@ public:
 
     void replyErr(int code);
 
-    void selectDatabase(int which);
-
     friend class IOTransfer;
 
     std::vector<uint8_t> buff;
     boost::asio::ip::tcp::socket peer;
     handler_memory handler_memory_;
-
+    uint32_t db_index = 0;
 };
 
 

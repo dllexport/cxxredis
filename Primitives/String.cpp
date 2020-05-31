@@ -20,7 +20,7 @@ std::pair<int, const std::string&> String::GET(uint8_t db_index, const std::stri
     return {universal_command::OK, boost::any_cast<const std::string &>(object->any)};
 }
 
-std::pair<int, std::string> String::GETRANGE(uint8_t db_index, const std::string &&key, std::string&& start_str, std::string&& end_str)
+std::pair<int, std::string> String::GETRANGE(uint8_t db_index, const std::string &key, std::string&& start_str, std::string&& end_str)
 {
     auto db = Database::GetInstance();
     auto object = db->Get(db_index, std::forward<const std::string>(key));
@@ -73,7 +73,7 @@ std::pair<int, std::string> String::GETSET(uint8_t db_index, const std::string &
     return {universal_command::OK, result};
 }
 
-std::pair<int, int> String::STRLEN(uint8_t db_index, const std::string &&key)
+std::pair<int, int> String::STRLEN(uint8_t db_index, const std::string &key)
 {
     auto db = Database::GetInstance();
     auto object = db->Get(db_index, std::forward<const std::string>(key));
@@ -84,17 +84,17 @@ std::pair<int, int> String::STRLEN(uint8_t db_index, const std::string &&key)
     return {universal_command::NOT_MATCH_ERR, 0};
 }
 
-std::pair<int, int> String::SETEX(uint8_t db_index, const std::string &&key, std::string &&value, std::string &&expire_time)
+std::pair<int, int> String::SETEX(uint8_t db_index, const std::string &key, std::string &&value, std::string &&expire_time)
 {
     return SetExOP(db_index, std::forward<const std::string &&>(key), std::forward<std::string &&>(value), std::forward<std::string &&>(expire_time), true);
 }
 
-std::pair<int, int> String::PSETEX(uint8_t db_index, const std::string &&key, std::string &&value, std::string &&expire_time)
+std::pair<int, int> String::PSETEX(uint8_t db_index, const std::string &key, std::string &&value, std::string &&expire_time)
 {
     return SetExOP(db_index, std::forward<const std::string &&>(key), std::forward<std::string &&>(value), std::forward<std::string &&>(expire_time), false);
 }
 
-std::pair<int, int> String::SET(uint8_t db_index, const std::string &&key, std::string &&value)
+std::pair<int, int> String::SET(uint8_t db_index, const std::string &key, std::string &&value)
 {
     auto db = Database::GetInstance();
     return {universal_command::OK, db->Set(db_index,
@@ -102,7 +102,7 @@ std::pair<int, int> String::SET(uint8_t db_index, const std::string &&key, std::
                                  new Object(ENCODING_TYPE::STRING, std::forward<std::string &&>(value)))};
 }
 
-std::pair<int, int> String::SETNX(uint8_t db_index, const std::string &&key, std::string &&value)
+std::pair<int, int> String::SETNX(uint8_t db_index, const std::string &key, std::string &&value)
 {
     auto db = Database::GetInstance();
     auto object = db->Get(db_index, std::forward<const std::string>(key));
@@ -119,19 +119,19 @@ std::pair<int, int> String::SETNX(uint8_t db_index, const std::string &&key, std
  * string obj should be a number
  * return <res, const std::string&>
  */
-std::pair<int, const std::string &> String::INCR(uint8_t db_index, const std::string &&key)
+std::pair<int, const std::string &> String::INCR(uint8_t db_index, const std::string &key)
 {
     return IncrDecrbyOP(db_index, std::forward<const std::string &&>(key), "1", true);
 }
-std::pair<int, const std::string &> String::INCRBY(uint8_t db_index, const std::string &&key, std::string &&by)
+std::pair<int, const std::string &> String::INCRBY(uint8_t db_index, const std::string &key, std::string &&by)
 {
     return IncrDecrbyOP(db_index, std::forward<const std::string &&>(key), std::forward<std::string &&>(by), true);
 }
-std::pair<int, const std::string &> String::DECR(uint8_t db_index, const std::string &&key)
+std::pair<int, const std::string &> String::DECR(uint8_t db_index, const std::string &key)
 {
     return IncrDecrbyOP(db_index, std::forward<const std::string &&>(key), "1", false);
 }
-std::pair<int, const std::string &> String::DECRBY(uint8_t db_index, const std::string &&key, std::string &&by)
+std::pair<int, const std::string &> String::DECRBY(uint8_t db_index, const std::string &key, std::string &&by)
 {
     return IncrDecrbyOP(db_index, std::forward<const std::string &&>(key), std::forward<std::string &&>(by), false);
 }
@@ -141,7 +141,7 @@ std::pair<int, const std::string &> String::DECRBY(uint8_t db_index, const std::
  * return total len
  * return 0 if failed
  */
-std::pair<int, int> String::APPEND(uint8_t db_index, const std::string &&key, std::string &&append_value)
+std::pair<int, int> String::APPEND(uint8_t db_index, const std::string &key, std::string &&append_value)
 {
     auto db = Database::GetInstance();
     auto object = db->Get(db_index, std::forward<const std::string>(key));
@@ -157,7 +157,7 @@ std::pair<int, int> String::APPEND(uint8_t db_index, const std::string &&key, st
 }
 
 
-std::pair<int, const std::string &> String::IncrDecrbyOP(uint8_t db_index, const std::string &&key, std::string &&by, bool incr)
+std::pair<int, const std::string &> String::IncrDecrbyOP(uint8_t db_index, const std::string &key, std::string &&by, bool incr)
 {
     auto db = Database::GetInstance();
     auto object = db->Get(db_index, std::forward<const std::string>(key));
@@ -192,7 +192,7 @@ std::pair<int, const std::string &> String::IncrDecrbyOP(uint8_t db_index, const
 
 // sec_or_msec
 // true for sec false for msec
-std::pair<int, int> String::SetExOP(uint8_t db_index, const std::string &&key, std::string &&value, std::string && expire_time, bool sec_or_msec)
+std::pair<int, int> String::SetExOP(uint8_t db_index, const std::string &key, std::string &&value, std::string && expire_time, bool sec_or_msec)
 {
     auto db = Database::GetInstance();
     uint32_t end_time = 0;

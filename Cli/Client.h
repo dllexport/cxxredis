@@ -14,14 +14,14 @@
 #include <regex>
 #define Q(x) #x
 #define QUOTE(x) Q(x)
-#define GENSTRCASE_COMMAND(key) Command::key
+#define GENSTRCASE_COMMAND(key) string_command::key
 #define GenStringCase2(key) \
     case str2int(QUOTE(key)): \
     { \
         if (parts.size() != 2) \
         return false; \
-        CMD_##key##_REQ req; \
-        req.set_key(parts[1]); \
+        universal_command::REQ1 req; \
+        req.set_value(parts[1]); \
         auto serial_size = req.ByteSizeLong(); \
         if (serial_size > buff.capacity()) \
         return false; \
@@ -37,13 +37,13 @@
     { \
         if (parts.size() != 3) \
         return -1; \
-        CMD_##key##_REQ cs; \
-        cs.set_key(parts[1]); \
-        cs.set_value(parts[2]); \
-        auto serial_size = cs.ByteSizeLong(); \
+        universal_command::REQ2 req; \
+        req.set_value1(parts[1]); \
+        req.set_value2(parts[2]); \
+        auto serial_size = req.ByteSizeLong(); \
         if (serial_size > buff.capacity()) \
         return -1; \
-        cs.SerializeToArray(BProtoHeaderOffset(&buff[0]), serial_size); \
+        req.SerializeToArray(BProtoHeaderOffset(&buff[0]), serial_size); \
         auto header = (BProtoHeader *)&buff[0]; \
         header->payload_len = serial_size; \
         header->payload_cmd = GENSTRCASE_COMMAND(key); \
@@ -54,14 +54,14 @@
     { \
         if (parts.size() != 4) \
         return -1; \
-        CMD_##key##_REQ cs; \
-        cs.set_key(parts[1]); \
-        cs.set_value(parts[2]); \
-        cs.set_value2(parts[3]); \
-        auto serial_size = cs.ByteSizeLong(); \
+        universal_command::REQ3 req; \
+        req.set_value1(parts[1]); \
+        req.set_value2(parts[2]); \
+        req.set_value3(parts[3]); \
+        auto serial_size = req.ByteSizeLong(); \
         if (serial_size > buff.capacity()) \
         return -1; \
-        cs.SerializeToArray(BProtoHeaderOffset(&buff[0]), serial_size); \
+        req.SerializeToArray(BProtoHeaderOffset(&buff[0]), serial_size); \
         auto header = (BProtoHeader *)&buff[0]; \
         header->payload_len = serial_size; \
         header->payload_cmd = GENSTRCASE_COMMAND(key); \
@@ -128,18 +128,19 @@ public:
             linenoiseSetHintsCallback(hints);
 
             char *line;
-//            std::vector<char> input(4096);
+            std::vector<char> input(4096);
             auto t1 = std::chrono::high_resolution_clock::now();
 
 
 
-            while((line = linenoise("cxxredis> ")) != NULL) {
-//            while(1) {
-//                std::cin.getline(&input.at(0), 4096);
-//                line = &input[0];
-                linenoiseHistoryAdd(line); /* Add to the history. */
+//            while((line = linenoise("cxxredis> ")) != NULL) {
+            while(1) {
+                std::cin.getline(&input.at(0), 4096);
+                line = &input[0];
+//                linenoiseHistoryAdd(line); /* Add to the history. */
                 auto line_str = std::string(line);
                 boost::trim_all(line_str);
+
                 if (line[0] != '\0' && line[0] != '/') {
                     auto bytes_to_send = serialize(line_str, buff);
                     if (bytes_to_send <= 0) {
@@ -163,7 +164,7 @@ public:
                     }
                     auto payload_len = header->payload_len;
                     auto payload_type = header->payload_cmd;
-                    if (payload_type == Command::OK && payload_len == 0) {
+                    if (payload_type == universal_command::OK && payload_len == 0) {
                         std::cout << "OK\n";
                         continue;
                     }
@@ -181,7 +182,7 @@ public:
                 } else if (line[0] == '/') {
                     printf("Unreconized command: %s\n", line);
                 }
-                free(line);
+//                free(line);
             }
 
             auto t2 = std::chrono::high_resolution_clock::now();
@@ -205,13 +206,17 @@ private:
         if (parts.size() == 0)
             return -1;
         parts[0] = boost::to_upper_copy<std::string>(parts[0]);
+        for (auto part : parts) {
+            std::cout << part << "\n";
+            fflush(stdout);
+        }
         switch (str2int(parts[0].c_str()))
         {
             case str2int("KEYS"): {
                 if (parts.size() != 1) return false;
                 auto header = (BProtoHeader *) &buff[0];
                 header->payload_len = 0;
-                header->payload_cmd = Command::KEYS;
+                header->payload_cmd = universal_command::KEYS;
                 return BProtoHeader::Size();
                 break;
             }
@@ -219,7 +224,7 @@ private:
                 if (parts.size() != 1) return false;
                 auto header = (BProtoHeader *) &buff[0];
                 header->payload_len = 0;
-                header->payload_cmd = Command::SAVE;
+                header->payload_cmd = universal_command::SAVE;
                 return BProtoHeader::Size();
                 break;
             }
@@ -227,14 +232,14 @@ private:
                 if (parts.size() != 1) return false;
                 auto header = (BProtoHeader *) &buff[0];
                 header->payload_len = 0;
-                header->payload_cmd = Command::BGSAVE;
+                header->payload_cmd = universal_command::BG_SAVE;
                 return BProtoHeader::Size();
                 break;
             }
             case str2int("SELECT"): {
                 if (parts.size() != 2)return false;
-                universal_command::SELECT_REQ req;
-                req.set_db(parts[1]);
+                universal_command::REQ1 req;
+                req.set_value(parts[1]);
                 auto serial_size = req.ByteSizeLong();
                 if (serial_size > buff.capacity())return false;
                 req.SerializeToArray(&buff[0] + BProtoHeader::Size(), serial_size);
@@ -247,7 +252,23 @@ private:
             GenStringCase2(STRLEN)
             GenStringCase3(SET)
             GenStringCase3(GETSET)
-            GenStringCase3(APPEND)
+//            GenStringCase3(APPEND)
+            case str2int("APPEND"):
+            {
+                if (parts.size() != 3)
+                    return -1;
+                universal_command::REQ2 req;
+                req.set_value1(parts[1]);
+                req.set_value2(parts[2]);
+                auto serial_size = req.ByteSizeLong();
+                if (serial_size > buff.capacity())
+                    return -1;
+                req.SerializeToArray(BProtoHeaderOffset(&buff[0]), serial_size);
+                auto header = (BProtoHeader *)&buff[0];
+                header->payload_len = serial_size;
+                header->payload_cmd = GENSTRCASE_COMMAND(APPEND);
+                return BProtoHeaderSize + serial_size;
+            }
             GenStringCase2(INCR)
             GenStringCase2(DECR)
             GenStringCase3(DECRBY)
@@ -267,33 +288,33 @@ private:
     {
         switch (cmd_type)
         {
-            case Command::PARAM_ERR:{
+            case universal_command::PARAM_ERR:{
                 return {"Param error"};
             }
-            case Command::EXIST_ERR:{
+            case universal_command::EXIST_ERR:{
                 return {"Key already exist"};
             }
-            case Command::NOTEXIST_ERR:{
+            case universal_command::NOT_EXIST_ERR:{
                 return {"Key not exist"};
             }
-            case Command::NOTMATCH_ERR:{
+            case universal_command::NOT_MATCH_ERR:{
                 return {"Key type not match"};
             }
-            case Command::STRING_OK:
+            case universal_command::STRING_OK:
             {
-                STRING_OK_REPLY reply;
+                universal_command::REPLY1 reply;
                 reply.ParseFromArray(&buff[0], size);
                 return {reply.value()};
             }
-            case Command::INT_OK:
+            case universal_command::INT_OK:
             {
-                INT_OK_REPLY reply;
+                universal_command::INT_REPLY1 reply;
                 reply.ParseFromArray(&buff[0], size);
                 return {std::to_string(reply.value())};
             }
-            case Command::REPEATED_STRING_OK:
+            case universal_command::REPEATED_STRING_OK:
             {
-                REPEATED_STRING_OK_REPLY reply;
+                universal_command::REPLY_ANY reply;
                 reply.ParseFromArray(&buff[0], size);
                 return std::vector<std::string>(reply.value().begin(), reply.value().end());
             }

@@ -172,7 +172,7 @@ void Session::readHeader()
                                             return;
                                         }
                                         auto header = (BProtoHeader *)&buff[0];
-                                        auto buffer_size = buff.size();
+                                        auto buffer_size = buff.capacity();
                                         if (header->payload_len > buffer_size) {
                                             return;
                                         }
@@ -198,67 +198,9 @@ void Session::readPayload(uint32_t size, int command_code)
 
                                         this->buff.resize(bytes_transferred);
 
-                                        CommandDispatch::GetInstance()->Dispatch(command_code, this->self());
+                                        auto self = this->self();
+                                        CommandDispatch::GetInstance()->Dispatch(command_code, self);
 
-//                                        switch ((int)command_code)
-//                                        {
-//                                            case universal_command::SELECT:
-//                                            {
-//                                                universal_command::SELECT_REQ req;
-//                                                req.ParseFromArray(&buff[0], bytes_transferred);
-//                                                uint32_t db_index = 0;
-//                                                try {
-//                                                    db_index = boost::lexical_cast<uint32_t>(req.db());
-//                                                }catch (...) {
-//                                                    replyErr(Command::PARAM_ERR);
-//                                                    break;
-//                                                }
-//                                                auto res = IOTransfer::GetInstance()->doTransfer(this, db_index);
-//                                                if (res) return;
-//                                                replyOK();
-//                                                break;
-//                                            }
-//                                            case Command::SAVE:
-//                                            {
-//                                                Dump::SAVE();
-//                                                replyOK();
-//                                                break;
-//                                            }
-//                                            case Command::BGSAVE:
-//                                            {
-//                                                Dump::BGSAVE();
-//                                                replyOK();
-//                                                break;
-//                                            }
-//                                            case Command::KEYS:
-//                                            {
-//                                                auto db = Database::GetInstance();
-//                                                replyRepeatedStringOK(db->KEYS(0));
-//                                                break;
-//                                            }
-//                                            GenStringCase2(SET, replyOK)
-//                                            GenStringCase1(GET, replyStringOK)
-//                                            GenStringCase3(PSETEX, replyIntOK)
-//                                            GenStringCase3(SETEX, replyIntOK)
-//                                            GenStringCase3(GETRANGE, replyStringOK)
-//                                            GenStringCase2(SETNX, replyIntOK)
-//                                            GenStringCase2(GETSET, replyStringOK)
-//                                            GenStringCase1(INCR, replyStringOK)
-//                                            GenStringCase1(DECR, replyStringOK)
-//                                            GenStringCase1(STRLEN, replyIntOK)
-//                                            GenStringCase2(APPEND, replyIntOK)
-//                                            GenStringCase2(INCRBY, replyStringOK)
-//                                            GenStringCase2(DECRBY, replyStringOK)
-//                                            default:
-//                                            {
-//                                            }
-//                                        };
                                         readHeader();
                                     }));
-}
-
-
-void Session::selectDatabase(int which) {
-
-    this->peer.release();
 }

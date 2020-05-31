@@ -44,12 +44,12 @@ if(Boost_FOUND)
             Utils/GetConcurrency.h Utils/GetConcurrency.cpp
             Protocol/bproto.h Protocol/BProto.pb.h
             Protocol/BProto.pb.cc Protocol/universal.pb.h Protocol/universal.pb.cc Protocol/string.pb.h Protocol/string.pb.cc
-            State/Config.cpp State/Config.h Net/IOTransfer.cpp Net/IOTransfer.h Net/IOExecutor.h Command/CommandDispatch.cpp Command/CommandDispatch.h Command/CommandHandler.h Command/StringCommand.cpp Command/StringCommand.h Command/CommandRegistry.h)
+            State/Config.cpp State/Config.h Net/IOTransfer.cpp Net/IOTransfer.h Net/IOExecutor.h Command/CommandDispatch.cpp Command/CommandDispatch.h Command/CommandHandler.h Command/StringCommand.cpp Command/StringCommand.h Command/CommandRegistry.h Command/UniversalCommand.h)
     add_executable(cxxredis-cli Cli/main.cpp
             Cli/Client.h Cli/Client.cpp
             Protocol/bproto.h
             Utils/linenoise.h Utils/linenoise.c
-            Protocol/BProto.pb.h Protocol/BProto.pb.cc Protocol/universal.pb.h Protocol/universal.pb.cc)
+            Protocol/BProto.pb.h Protocol/BProto.pb.cc Protocol/universal.pb.h Protocol/universal.pb.cc Protocol/string.pb.h Protocol/string.pb.cc)
     target_link_libraries (cxxredis-cli ${Boost_LIBRARIES})
     target_link_libraries (cxxredis ${Boost_LIBRARIES})
 

@@ -7,4 +7,4 @@
 #include <functional>
 #include "../Net/Session.h"
 
-using CommandDefaultHandler = std::function<void(boost::intrusive_ptr<Session>)>;
+using CommandDefaultHandler = std::function<void(const boost::intrusive_ptr<Session>&)>;

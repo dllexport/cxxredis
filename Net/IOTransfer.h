@@ -66,6 +66,7 @@ public:
                         }
                         auto session = boost::intrusive_ptr<Session>(new Session(io_executor->GetContextAt(i)));
                         session->peer.assign(boost::asio::ip::tcp::v4(), recv_fd);
+                        session->db_index = i;
                         session->replyOK();
                         session->WaitProcess();
                         recv_fd = -1;
@@ -86,6 +87,7 @@ public:
                         }
                         auto session = boost::intrusive_ptr<Session>(new Session(io_executor->GetContextAt(j)));
                         session->peer.assign(boost::asio::ip::tcp::v4(), recv_fd);
+                        session->db_index = j;
                         session->replyOK();
                         session->WaitProcess();
                         recv_fd = -1;
@@ -100,7 +102,7 @@ public:
      * return true if transfer complete
      * return false if transfer is not needed
      */
-    bool doTransfer(boost::intrusive_ptr<Session> session, uint32_t target_db_idx) {
+    bool doTransfer(const boost::intrusive_ptr<Session>& session, uint32_t target_db_idx) {
 
         auto io_executor = IOExecutor::GetInstance();
 
