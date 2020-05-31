@@ -9,10 +9,35 @@
 #include <boost/asio.hpp>
 #include <boost/asio/spawn.hpp>
 #include "../Utils/Singleton.h"
+#include "../Database.h"
 #include "Session.h"
 #include "IOExecutor.h"
-#include "../Database.h"
 
+/*
+ * IOTransfer is an mechanism to avoid locking
+ * each io_context is responsible for a set of dbs, their index is simply a mod calculation
+ * for instance:
+ *      on a system with 4 core(which means 4 io_contexts) 16 dbs
+ *      db 0,1,2,3 is managed by io_contexts[0]
+ *      db 4,5,6,7 is managed by io_contexts[1] ... so forth
+ *
+ * with SO_REUSEPORT enalbed, each io_context has it's own socket, but they all bind to same endpoint
+ * let's say the default db is db[0] for every new connection, which is handle by io_contexts[0]
+ * when client connect, the socket might be handled by any of the io_contexts
+ * client socket in io_conetxt[1] must not access db [0,1,2,3], db [8,9,10,11] and db [12,13,14,15]
+ * there's a race condition here, but client should be access any db anyway
+ * adding mutex is an easy approach but there's another way
+ * we use UnixSocket to solve the issue
+ *
+ * the idea is simple, below are some steps of execution when Session in io_context[1] wants to access db[0]
+ * 1. save the corresponding fd
+ * 2. release asio::ip::tcp::socket, keep the underling fd opened
+ * 3. send fd it to io_context[0] via socket pair
+ * 4. build another session in io_context[0]
+ *
+ *  that's it, no mutex is needed.
+ *
+ */
 class IOTransfer : public Singleton<IOTransfer> {
 
     using UnixSocket = boost::asio::local::datagram_protocol::socket;

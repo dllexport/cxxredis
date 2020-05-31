@@ -10,6 +10,9 @@
 #include "../Utils/Singleton.h"
 #include "../Utils/GetConcurrency.h"
 
+/*
+ * simple wrapper for asio executor
+ */
 class IOExecutor : public Singleton<IOExecutor> {
 
     using IOContext = boost::asio::io_context;
@@ -19,6 +22,8 @@ public:
 
     IOExecutor() {
         for (int i = 0; i < GetConcurrency(); ++i) {
+            // disable all mutex in io_context
+            // and each io_context has only one corresponding thread
             this->io_contexts.emplace_back(std::make_unique<IOContext>(BOOST_ASIO_CONCURRENCY_HINT_UNSAFE));
         }
         // create worker for each io_context
