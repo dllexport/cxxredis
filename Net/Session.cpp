@@ -219,7 +219,6 @@ void Session::readPayload(uint32_t size, int command_code)
 
                                         auto self = this->self();
                                         CommandDispatch::GetInstance()->Dispatch(command_code, bytes_transferred, self);
-
                                         readHeader();
                                     }));
 }

@@ -32,7 +32,7 @@
  * the idea is simple, below are some steps of execution when Session in io_context[1] wants to access db[0]
  * 1. save the corresponding fd
  * 2. release asio::ip::tcp::socket, keep the underling fd opened
- * 3. send fd it to io_context[0] via socket pair
+ * 3. send fd to io_context[0] via socket pair
  * 4. build another session in io_context[0]
  *
  *  that's it, no mutex is needed.
@@ -96,6 +96,7 @@ public:
                         }
                         auto session = boost::intrusive_ptr<Session>(new Session(io_executor->GetContextAt(i)));
                         session->peer.assign(boost::asio::ip::tcp::v4(), ctx.fd);
+                        session->db_index = ctx.db_index;
                         session->replySelectOK(ctx.db_index);
                         session->WaitProcess();
                     }
@@ -114,6 +115,7 @@ public:
                         }
                         auto session = boost::intrusive_ptr<Session>(new Session(io_executor->GetContextAt(j)));
                         session->peer.assign(boost::asio::ip::tcp::v4(), ctx.fd);
+                        session->db_index = ctx.db_index;
                         session->replySelectOK(ctx.db_index);
                         session->WaitProcess();
                     }
