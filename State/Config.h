@@ -3,10 +3,13 @@
 //
 
 #pragma once
+#include <boost/thread.hpp>
+#include "../Utils/Singleton.h"
+#include "../Utils/GetConcurrency.h"
 
-class Config {
+struct Config : public Singleton<Config> {
 public:
-
+    int db_count = 16 * GetConcurrency();
 };
 
 

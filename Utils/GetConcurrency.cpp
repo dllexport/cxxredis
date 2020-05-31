@@ -12,6 +12,6 @@ unsigned int GetConcurrency() noexcept {
 #ifdef __linux__
     return boost::thread::physical_concurrency();
 #else
-    return 4;
+    return 1;
 #endif
 }

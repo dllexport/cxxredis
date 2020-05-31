@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include "Primitives/Object.h"
 #include "Utils/Singleton.h"
+#include "State/Config.h"
 #include <boost/intrusive_ptr.hpp>
 #include "Persistence/Serialization/SerialObject.h"
 #include <boost/serialization/unordered_map.hpp>
@@ -69,7 +70,7 @@ private:
     friend class Singleton<Database>;
     friend class Dump;
     friend class Restore;
-    Database() : dbs(std::vector<std::unordered_map<std::string, boost::intrusive_ptr<Object>>>(16)) {}
+    Database() : dbs(std::vector<std::unordered_map<std::string, boost::intrusive_ptr<Object>>>(Config::GetInstance()->db_count)) {}
     Database(const Database& other) {}
 
     std::vector<std::unordered_map<std::string, boost::intrusive_ptr<Object>>> dbs;

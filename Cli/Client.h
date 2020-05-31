@@ -12,6 +12,8 @@
 #include "../Protocol/bproto.h"
 #include "../Utils/linenoise.h"
 #include <boost/lexical_cast.hpp>
+#include "CommandMap.h"
+#include "CommandRegistry.h"
 
 #include <regex>
 #define Q(x) #x
@@ -69,10 +71,7 @@
         header->payload_cmd = GENSTRCASE_COMMAND(key); \
         return BProtoHeaderSize + serial_size; \
     }
-constexpr unsigned int str2int(const char *str, int h = 0)
-{
-    return !str[h] ? 5381 : (str2int(str, h + 1) * 33) ^ str[h];
-}
+
 
 static char *hints(const char *buf, int *color, int *bold) {
     std::regex kv_reg("(SET|SETNX|INCRBY|DECRBY|APPEND)\\s*", std::regex::icase);
@@ -107,7 +106,9 @@ static char *hints(const char *buf, int *color, int *bold) {
 class Client
 {
 public:
-    Client() : io_context(BOOST_ASIO_CONCURRENCY_HINT_UNSAFE), socket(io_context) {}
+    Client() : io_context(BOOST_ASIO_CONCURRENCY_HINT_UNSAFE), socket(io_context) {
+        client_command::RegisterAll();
+    }
 
     void Run()
     {
@@ -118,7 +119,7 @@ public:
         socket.set_option(option);
         boost::asio::spawn(this->io_context, [this](boost::asio::yield_context yield) {
             boost::system::error_code ec;
-            auto connect_ep = boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::from_string("192.168.123.147"), 6666);
+            auto connect_ep = boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::from_string("127.0.0.1"), 6666);
             this->socket.async_connect(connect_ep, yield[ec]);
             if (ec)
             {
@@ -130,19 +131,19 @@ public:
             linenoiseSetHintsCallback(hints);
 
             char *line;
-//            std::vector<char> input(4096);
+            std::vector<char> input(4096);
             auto t1 = std::chrono::high_resolution_clock::now();
 
             auto remote_ep = this->socket.remote_endpoint();
-            while(1) {
-                auto prompt = remote_ep.address().to_string() + ":" + std::to_string(remote_ep.port()) + "[" + std::to_string(db_index) + "]> ";
-                line = linenoise(prompt.c_str());
-                if (!line)
-                    return;
 //            while(1) {
-//                std::cin.getline(&input.at(0), 4096);
-//                line = &input[0];
-                linenoiseHistoryAdd(line); /* Add to the history. */
+//                auto prompt = remote_ep.address().to_string() + ":" + std::to_string(remote_ep.port()) + "[" + std::to_string(db_index) + "]> ";
+//                line = linenoise(prompt.c_str());
+//                if (!line)
+//                    return;
+            while(1) {
+                std::cin.getline(&input.at(0), 4096);
+                line = &input[0];
+//                linenoiseHistoryAdd(line); /* Add to the history. */
                 auto line_str = std::string(line);
                 boost::trim_all(line_str);
 
@@ -187,7 +188,7 @@ public:
                 } else if (line[0] == '/') {
                     printf("Unreconized command: %s\n", line);
                 }
-                free(line);
+//                free(line);
             }
 
             auto t2 = std::chrono::high_resolution_clock::now();
@@ -212,6 +213,7 @@ private:
         if (parts.size() == 0)
             return -1;
         parts[0] = boost::to_upper_copy<std::string>(parts[0]);
+        return CommandMap::GetInstance()->Dispatch(parts, buff);
         switch (str2int(parts[0].c_str()))
         {
             case str2int("KEYS"): {

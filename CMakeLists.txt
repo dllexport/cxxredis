@@ -44,16 +44,20 @@ if(Boost_FOUND)
             Utils/GetConcurrency.h Utils/GetConcurrency.cpp
             Protocol/bproto.h Protocol/BProto.pb.h
             Protocol/BProto.pb.cc Protocol/universal.pb.h Protocol/universal.pb.cc Protocol/string.pb.h Protocol/string.pb.cc
-            State/Config.cpp State/Config.h Net/IOTransfer.cpp Net/IOTransfer.h Net/IOExecutor.h Command/CommandDispatch.cpp Command/CommandDispatch.h Command/CommandHandler.h Command/StringCommand.cpp Command/StringCommand.h Command/CommandRegistry.h Command/UniversalCommand.h)
+            State/Config.cpp State/Config.h Net/IOTransfer.cpp Net/IOTransfer.h Net/IOExecutor.h Command/CommandDispatch.cpp Command/CommandDispatch.h Command/CommandHandler.h Command/StringCommand.cpp Command/StringCommand.h Command/CommandRegistry.h Command/UniversalCommand.h )
     add_executable(cxxredis-cli Cli/main.cpp
             Cli/Client.h Cli/Client.cpp
             Protocol/bproto.h
             Utils/linenoise.h Utils/linenoise.c
-            Protocol/BProto.pb.h Protocol/BProto.pb.cc Protocol/universal.pb.h Protocol/universal.pb.cc Protocol/string.pb.h Protocol/string.pb.cc)
+            Protocol/BProto.pb.h Protocol/BProto.pb.cc Protocol/universal.pb.h Protocol/universal.pb.cc Protocol/string.pb.h Protocol/string.pb.cc Cli/CommandMap.cpp Cli/CommandMap.h Cli/CommandRegistry.h Cli/CommandRegistry.cpp)
+    add_executable(cxxredis-benchmark Benchmark/SET.cpp Cli/CommandRegistry.cpp Protocol/BProto.pb.h Protocol/BProto.pb.cc Protocol/universal.pb.h Protocol/universal.pb.cc Protocol/string.pb.h Protocol/string.pb.cc)
+    target_link_libraries (cxxredis-benchmark ${Boost_LIBRARIES})
     target_link_libraries (cxxredis-cli ${Boost_LIBRARIES})
     target_link_libraries (cxxredis ${Boost_LIBRARIES})
 
     IF (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+        target_link_libraries (cxxredis-benchmark /usr/local/Cellar/protobuf/3.12.1/lib/libprotobuf.a)
+        target_link_libraries (cxxredis-benchmark /usr/local/Cellar/protobuf/3.12.1/lib/libprotoc.a)
         target_link_libraries (cxxredis-cli /usr/local/Cellar/protobuf/3.12.1/lib/libprotobuf.a)
         target_link_libraries (cxxredis-cli /usr/local/Cellar/protobuf/3.12.1/lib/libprotoc.a)
         target_link_libraries (cxxredis /usr/local/Cellar/protobuf/3.12.1/lib/libprotobuf.a)

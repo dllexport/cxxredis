@@ -141,6 +141,13 @@ public:
             return false;
         }
 
+        // there's nothing to transfer on non-linux system
+        #ifndef __linux__
+                session->db_index = target_db_idx;
+                session->replySelectOK(target_db_idx);
+                return false;
+        #endif
+
         uint32_t to_idx = target_db_idx % io_executor->GetContextCount();
         auto io_context = static_cast<boost::asio::io_context*>(&session->peer.get_executor().context());
         uint32_t from_idx = transfer_index_map[io_context];

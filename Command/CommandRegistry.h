@@ -28,7 +28,6 @@ namespace command {
         dispatcher->Register(string_command::SETEX, command::SETEX);
         dispatcher->Register(string_command::GETRANGE, command::GETRANGE);
 
-
         dispatcher->Register(universal_command::SELECT, command::SELECT);
         dispatcher->Register(universal_command::SAVE, command::SAVE);
         dispatcher->Register(universal_command::BG_SAVE, command::BG_SAVE);
