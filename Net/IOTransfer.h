@@ -11,6 +11,7 @@
 #include "../Utils/Singleton.h"
 #include "Session.h"
 #include "IOExecutor.h"
+#include "../Database.h"
 
 class IOTransfer : public Singleton<IOTransfer> {
 
@@ -67,7 +68,7 @@ public:
                         auto session = boost::intrusive_ptr<Session>(new Session(io_executor->GetContextAt(i)));
                         session->peer.assign(boost::asio::ip::tcp::v4(), recv_fd);
                         session->db_index = i;
-                        session->replyOK();
+                        session->replySelectOK(i);
                         session->WaitProcess();
                         recv_fd = -1;
                     }
@@ -88,7 +89,7 @@ public:
                         auto session = boost::intrusive_ptr<Session>(new Session(io_executor->GetContextAt(j)));
                         session->peer.assign(boost::asio::ip::tcp::v4(), recv_fd);
                         session->db_index = j;
-                        session->replyOK();
+                        session->replySelectOK(j);
                         session->WaitProcess();
                         recv_fd = -1;
                     }
@@ -106,10 +107,21 @@ public:
 
         auto io_executor = IOExecutor::GetInstance();
 
+        auto max_db_index = Database::GetInstance()->DBCount() - 1;
+
+        if (target_db_idx > max_db_index)
+        {
+            session->replyErr(universal_command::PARAM_ERR);
+            return false;
+        }
+
         uint32_t to_idx = target_db_idx % io_executor->GetContextCount();
         auto io_context = static_cast<boost::asio::io_context*>(&session->peer.get_executor().context());
         uint32_t from_idx = transfer_index_map[io_context];
-        if (from_idx == to_idx) return false;
+        if (from_idx == to_idx) {
+            session->replyOK();
+            return false;
+        }
 
         auto low = std::min(from_idx, to_idx);
         auto high = std::max(from_idx, to_idx);

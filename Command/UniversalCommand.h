@@ -14,9 +14,9 @@
 
 namespace command {
 
-    const auto SELECT = [](const boost::intrusive_ptr<Session>& session) {
+    const auto SELECT = [](const boost::intrusive_ptr<Session>& session, int payload_len) {
         universal_command::REQ1 req;
-        req.ParseFromArray(&session->buff[0], session->buff.size());
+        req.ParseFromArray(&session->buff[0], payload_len);
         uint32_t db_index = 0;
         try {
             db_index = boost::lexical_cast<uint32_t>(req.value());
@@ -25,26 +25,23 @@ namespace command {
             return;
         }
         // session is revoke if doTransfer return true
-        auto res = IOTransfer::GetInstance()->doTransfer(session, db_index);
-        if (res) return;
-        session->replyOK();
+        IOTransfer::GetInstance()->doTransfer(session, db_index);
     };
 
 
-    const auto SAVE = [](const boost::intrusive_ptr<Session>& session) {
+    const auto SAVE = [](const boost::intrusive_ptr<Session>& session, int) {
         Dump::SAVE();
         session->replyOK();
     };
 
-    const auto BG_SAVE = [](const boost::intrusive_ptr<Session>& session) {
+    const auto BG_SAVE = [](const boost::intrusive_ptr<Session>& session, int) {
         Dump::BGSAVE();
         session->replyOK();
     };
 
-    const auto KEYS = [](const boost::intrusive_ptr<Session>& session) {
+    const auto KEYS = [](const boost::intrusive_ptr<Session>& session, int) {
         auto db = Database::GetInstance();
         session->replyRepeatedStringOK(db->KEYS(session->db_index));
-        session->replyOK();
     };
 
 }

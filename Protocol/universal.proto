@@ -11,8 +11,7 @@ enum COMMAND {
   SAVE = 104;
   BG_SAVE = 105;
   SELECT = 106;
-
-  RESERVE = 107;
+  SELECT_OK = 107;
 
   KEYS = 108;
   EXIST_ERR = 109;

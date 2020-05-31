@@ -18,8 +18,8 @@ public:
         this->dispatch_map.insert({command_code, handler});
     }
 
-    void Dispatch(int command_code, boost::intrusive_ptr<Session>& session) {
-        this->dispatch_map[command_code](session);
+    void Dispatch(int command_code, int payload_len, boost::intrusive_ptr<Session>& session) {
+        this->dispatch_map[command_code](session, payload_len);
     }
 
 private:

@@ -76,6 +76,7 @@ void Session::replyOK(...)
                                  }
                              });
 }
+
 void Session::replyIntOK(int code)
 {
     auto header = (BProtoHeader *)&buff[0];
@@ -94,6 +95,26 @@ void Session::replyIntOK(int code)
                                  }
                              });
 }
+
+void Session::replySelectOK(int db_index)
+{
+    auto header = (BProtoHeader *)&buff[0];
+    universal_command::INT_REPLY1 reply;
+    reply.set_value(db_index);
+    header->payload_len = reply.ByteSizeLong();
+    header->payload_cmd = universal_command::SELECT_OK;
+    reply.SerializePartialToArray(&buff[BProtoHeaderSize], reply.ByteSizeLong());
+    boost::asio::async_write(this->peer,
+                             boost::asio::buffer(&buff[0], BProtoHeaderSize + header->payload_len),
+                             [this](const boost::system::error_code &ec,
+                                    std::size_t bytes_transferred) {
+                                 if (ec)
+                                 {
+                                     return;
+                                 }
+                             });
+}
+
 void Session::replyStringOK(const std::string &str)
 {
     auto header = (BProtoHeader *)&buff[0];
@@ -196,10 +217,8 @@ void Session::readPayload(uint32_t size, int command_code)
                                             return;
                                         }
 
-                                        this->buff.resize(bytes_transferred);
-
                                         auto self = this->self();
-                                        CommandDispatch::GetInstance()->Dispatch(command_code, self);
+                                        CommandDispatch::GetInstance()->Dispatch(command_code, bytes_transferred, self);
 
                                         readHeader();
                                     }));

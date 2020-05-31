@@ -30,6 +30,8 @@ public:
 
     void replyIntOK(int code);
 
+    void replySelectOK(int db_index);
+
     void replyStringOK(const std::string &str);
 
     void replyRepeatedStringOK(std::vector<std::string> &&strs);

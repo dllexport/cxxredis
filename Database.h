@@ -62,6 +62,9 @@ public:
         return ans;
     }
 
+    uint32_t DBCount() {
+        return dbs.size();
+    }
 private:
     friend class Singleton<Database>;
     friend class Dump;
@@ -69,7 +72,6 @@ private:
     Database() : dbs(std::vector<std::unordered_map<std::string, boost::intrusive_ptr<Object>>>(16)) {}
     Database(const Database& other) {}
 
-    uint8_t db_count = 16;
     std::vector<std::unordered_map<std::string, boost::intrusive_ptr<Object>>> dbs;
 
     friend class boost::serialization::access;
@@ -77,7 +79,6 @@ private:
     template <class Archive>
     void serialize(Archive & ar, Database& o, const unsigned int version)
     {
-        ar & db_count;
         ar & dbs;
     }
 };
