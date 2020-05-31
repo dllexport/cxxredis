@@ -22,6 +22,11 @@ class IOTransfer : public Singleton<IOTransfer> {
         std::unique_ptr<UnixSocket> high_socket;
     };
 
+    struct transfer_context {
+        int fd;
+        int db_index;
+    };
+
     int genTransferKey(int from, int to) {
         return (from + 1) * 1000 + to;
     }
@@ -58,19 +63,16 @@ public:
                 boost::asio::spawn([i, j, io_executor, this](boost::asio::yield_context yield){
                     boost::system::error_code ec;
                     auto& state = this->transfer_map[genTransferKey(i, j)];
-                    int recv_fd = -1;
+                    transfer_context ctx{};
                     while(1) {
-                        state->low_socket->async_receive(boost::asio::buffer(&recv_fd, 4), yield[ec]);
+                        state->low_socket->async_receive(boost::asio::buffer(&ctx, sizeof(transfer_context)), yield[ec]);
                         if (ec) {
-                            int j = 1;
                             return;
                         }
                         auto session = boost::intrusive_ptr<Session>(new Session(io_executor->GetContextAt(i)));
-                        session->peer.assign(boost::asio::ip::tcp::v4(), recv_fd);
-                        session->db_index = i;
-                        session->replySelectOK(i);
+                        session->peer.assign(boost::asio::ip::tcp::v4(), ctx.fd);
+                        session->replySelectOK(ctx.db_index);
                         session->WaitProcess();
-                        recv_fd = -1;
                     }
                 });
 
@@ -79,19 +81,16 @@ public:
                 boost::asio::spawn([i, j, io_executor,this](boost::asio::yield_context yield){
                     boost::system::error_code ec;
                     auto& state = this->transfer_map[genTransferKey(i, j)];
-                    int recv_fd = -1;
+                    transfer_context ctx{};
                     while(1) {
-                        state->high_socket->async_receive(boost::asio::buffer(&recv_fd, 4), yield[ec]);
+                        state->high_socket->async_receive(boost::asio::buffer(&ctx, sizeof(transfer_context)), yield[ec]);
                         if (ec) {
-                            int j = 1;
                             return;
                         }
                         auto session = boost::intrusive_ptr<Session>(new Session(io_executor->GetContextAt(j)));
-                        session->peer.assign(boost::asio::ip::tcp::v4(), recv_fd);
-                        session->db_index = j;
-                        session->replySelectOK(j);
+                        session->peer.assign(boost::asio::ip::tcp::v4(), ctx.fd);
+                        session->replySelectOK(ctx.db_index);
                         session->WaitProcess();
-                        recv_fd = -1;
                     }
                 });
             }
@@ -119,7 +118,7 @@ public:
         auto io_context = static_cast<boost::asio::io_context*>(&session->peer.get_executor().context());
         uint32_t from_idx = transfer_index_map[io_context];
         if (from_idx == to_idx) {
-            session->replyOK();
+            session->replySelectOK(target_db_idx);
             return false;
         }
 
@@ -131,11 +130,15 @@ public:
         auto fd = session->peer.release();
         *(int*)session->buff.data() = fd;
 
+        auto ctx = (transfer_context*)session->buff.data();
+        ctx->fd = fd;
+        ctx->db_index = target_db_idx;
+
         // if we are transfering to high
         if (low == from_idx) {
-            transfer_state->low_socket->async_send(boost::asio::buffer(session->buff.data(), 4), [session](...){});
+            transfer_state->low_socket->async_send(boost::asio::buffer((void*)ctx, sizeof(transfer_context)), [session](...){});
         }else if (low == to_idx) {
-            transfer_state->high_socket->async_send(boost::asio::buffer(session->buff.data(), 4), [session](...){});
+            transfer_state->high_socket->async_send(boost::asio::buffer((void*)ctx, sizeof(transfer_context)), [session](...){});
         }else {
             printf("should not reach this line\n");
             exit(-1);
