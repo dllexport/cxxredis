@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package string_command;
+
+enum Command {
+  VOID = 0;
+  SET = 1;
+  GET = 2;
+  GETSET = 3;
+  SETEX = 4;
+  SETNX = 5;
+  SETRANGE = 6;
+  STRLEN = 7;
+  PSETEX = 8;
+  INCR = 9;
+  INCRBY = 10;
+  DECR = 11;
+  DECRBY = 12;
+  APPEND = 13;
+  GETRANGE = 14;
+}

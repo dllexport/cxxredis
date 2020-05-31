@@ -1,1 +1,1 @@
-protoc --cpp_out=./  BProto.proto
+protoc --cpp_out=./  BProto.proto string.proto universal.proto

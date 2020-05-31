@@ -1,115 +1,84 @@
 syntax = "proto3";
 
 import public "universal.proto";
+import public "string.proto";
 
-enum Command {
-  OK = 0;
-  SET = 1;
-  GET = 2;
-  GETSET = 3;
-  SETEX = 4;
-  SETNX = 5;
-  SETRANGE = 6;
-  STRLEN = 7;
-  PSETEX = 8;
-  INCR = 9;
-  INCRBY = 10;
-  DECR = 11;
-  DECRBY = 12;
-  APPEND = 13;
-  GETRANGE = 14;
-
-  GET_OK = 15;
-  INT_OK = 16;
-  STRING_OK = 17;
-  EXIST_ERR = 18;
-  NOTEXIST_ERR = 19;
-  NOTMATCH_ERR = 20;
-  PARAM_ERR = 21;
-  OUT_OF_RANGE_ERR = 22;
-  REPEATED_STRING_OK = 23;
-  SAVE = 24;
-  BGSAVE = 25;
-  KEYS = 26;
-  SELECT = 27;
-}
-
-message REPEATED_STRING_OK_REPLY {
-  repeated string value = 1;
-}
-
-message INT_OK_REPLY {
-  int32 value = 1;
-}
-message STRING_OK_REPLY {
-  string value = 1;
-}
-
-message CMD_SET_REQ {
-  string key = 1;
-  string value = 2;
-}
-message CMD_SET_REPLY {
-  string value = 1;
-}
-
-message CMD_GET_REQ {
-  string key = 1;
-}
-message CMD_GET_REPLY {
-  string value = 1;
-}
-
-// get int reply
-message CMD_STRLEN_REQ {
-  string key = 1;
-}
-// get int reply
-message CMD_APPEND_REQ {
-  string key = 1;
-  string value = 2;
-}
-
-message CMD_INCR_REQ {
-  string key = 1;
-}
-
-message CMD_DECR_REQ {
-  string key = 1;
-}
-message CMD_INCRBY_REQ {
-  string key = 1;
-  string value = 2;
-}
-message CMD_DECRBY_REQ {
-  string key = 1;
-  string value = 2;
-}
-
-message CMD_GETSET_REQ {
-  string key = 1;
-  string value = 2;
-}
-
-message CMD_SETNX_REQ {
-  string key = 1;
-  string value = 2;
-}
-
-message CMD_SETEX_REQ {
-  string key = 1;
-  string value = 2;
-  string value2 = 3;
-}
-
-message CMD_PSETEX_REQ {
-  string key = 1;
-  string value = 2;
-  string value2 = 3;
-}
-
-message CMD_GETRANGE_REQ {
-  string key = 1;
-  string value = 2;
-  string value2 = 3;
-}
+//message REPEATED_STRING_OK_REPLY {
+//  repeated string value = 1;
+//}
+//
+//message INT_OK_REPLY {
+//  int32 value = 1;
+//}
+//message STRING_OK_REPLY {
+//  string value = 1;
+//}
+//
+//message CMD_SET_REQ {
+//  string key = 1;
+//  string value = 2;
+//}
+//message CMD_SET_REPLY {
+//  string value = 1;
+//}
+//
+//message CMD_GET_REQ {
+//  string key = 1;
+//}
+//message CMD_GET_REPLY {
+//  string value = 1;
+//}
+//
+//// get int reply
+//message CMD_STRLEN_REQ {
+//  string key = 1;
+//}
+//// get int reply
+//message CMD_APPEND_REQ {
+//  string key = 1;
+//  string value = 2;
+//}
+//
+//message CMD_INCR_REQ {
+//  string key = 1;
+//}
+//
+//message CMD_DECR_REQ {
+//  string key = 1;
+//}
+//message CMD_INCRBY_REQ {
+//  string key = 1;
+//  string value = 2;
+//}
+//message CMD_DECRBY_REQ {
+//  string key = 1;
+//  string value = 2;
+//}
+//
+//message CMD_GETSET_REQ {
+//  string key = 1;
+//  string value = 2;
+//}
+//
+//message CMD_SETNX_REQ {
+//  string key = 1;
+//  string value = 2;
+//}
+//
+//message CMD_SETEX_REQ {
+//  string key = 1;
+//  string value = 2;
+//  string value2 = 3;
+//}
+//
+//message CMD_PSETEX_REQ {
+//  string key = 1;
+//  string value = 2;
+//  string value2 = 3;
+//}
+//
+//message CMD_GETRANGE_REQ {
+//  string key = 1;
+//  string value = 2;
+//  string value2 = 3;
+//}

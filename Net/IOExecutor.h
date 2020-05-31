@@ -17,10 +17,13 @@ class IOExecutor : public Singleton<IOExecutor> {
 
 public:
 
-    IOExecutor() : io_contexts(GetConcurrency()) {
+    IOExecutor() {
+        for (int i = 0; i < GetConcurrency(); ++i) {
+            this->io_contexts.emplace_back(std::make_unique<IOContext>(BOOST_ASIO_CONCURRENCY_HINT_UNSAFE));
+        }
         // create worker for each io_context
         for (int i = 0; i < this->io_contexts.size(); ++i) {
-            this->workers.emplace_back(boost::asio::make_work_guard(io_contexts[i]));
+            this->workers.emplace_back(boost::asio::make_work_guard(*io_contexts[i]));
         }
     }
 
@@ -28,20 +31,26 @@ public:
     {
         for (int i = 0; i < io_contexts.size(); ++i) {
             this->thread_group.create_thread([this, i](){
-                this->io_contexts[i].run();
+                this->io_contexts[i]->run();
             });
         }
         this->thread_group.join_all();
     }
 
-    std::vector<IOContext>& GetContexts() {
-        return this->io_contexts;
+    std::vector<Worker>& GetWorkers() {
+        return this->workers;
+    }
+
+    IOContext& GetContextAt(int i) {
+        return *this->io_contexts[i];
+    }
+
+    int GetContextCount() {
+        return this->io_contexts.size();
     }
 
 private:
-
-
     boost::thread_group thread_group;
-    std::vector<IOContext> io_contexts;
+    std::vector<std::unique_ptr<IOContext>> io_contexts;
     std::vector<Worker> workers;
 };

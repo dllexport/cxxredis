@@ -8,7 +8,6 @@ set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 find_package(Boost COMPONENTS regex system coroutine context thread serialization REQUIRED)
 enable_testing()
-
 if(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
     add_executable(cxxredis
@@ -43,7 +42,9 @@ if(Boost_FOUND)
             State/Memory.cpp State/Memory.h
             Utils/RSS.h Utils/RSS.cpp
             Utils/GetConcurrency.h Utils/GetConcurrency.cpp
-            Protocol/bproto.h Protocol/BProto.pb.h Protocol/BProto.pb.cc Protocol/universal.pb.h Protocol/universal.pb.cc State/Config.cpp State/Config.h Net/IOTransfer.cpp Net/IOTransfer.h Net/IOExecutor.h)
+            Protocol/bproto.h Protocol/BProto.pb.h
+            Protocol/BProto.pb.cc Protocol/universal.pb.h Protocol/universal.pb.cc Protocol/string.pb.h Protocol/string.pb.cc
+            State/Config.cpp State/Config.h Net/IOTransfer.cpp Net/IOTransfer.h Net/IOExecutor.h Command/CommandDispatch.cpp Command/CommandDispatch.h Command/CommandHandler.h Command/StringCommand.cpp Command/StringCommand.h Command/CommandRegistry.h)
     add_executable(cxxredis-cli Cli/main.cpp
             Cli/Client.h Cli/Client.cpp
             Protocol/bproto.h

@@ -30,17 +30,19 @@ public:
 
     void Init() {
 
-        auto& io_contexts = IOExecutor::GetInstance()->GetContexts();
+        auto io_executor = IOExecutor::GetInstance();
 
-        for (int i = 0 ; i <= io_contexts.size() - 1; ++i) {
-            this->transfer_index_map.insert({&io_contexts[i].get_executor().context(), i});
+        auto context_count = io_executor->GetContextCount();
+
+        for (int i = 0 ; i <= context_count - 1; ++i) {
+            this->transfer_index_map.insert({&io_executor->GetContextAt(i), i});
         }
 
-        for (int i = 0; i <= io_contexts.size() - 2; ++i) {
-            for (int j = i + 1; j <= io_contexts.size() - 1; ++j) {
+        for (int i = 0; i <= context_count - 2; ++i) {
+            for (int j = i + 1; j <= context_count - 1; ++j) {
                 auto state = std::make_shared<transfer_state>();
-                state->low_socket = std::make_unique<UnixSocket>(io_contexts[i]);
-                state->high_socket = std::make_unique<UnixSocket>(io_contexts[j]);
+                state->low_socket = std::make_unique<UnixSocket>(io_executor->GetContextAt(i));
+                state->high_socket = std::make_unique<UnixSocket>(io_executor->GetContextAt(j));
                 boost::asio::local::connect_pair(*state->low_socket, *state->high_socket);
 
                 auto res = state->low_socket->is_open();
@@ -52,8 +54,7 @@ public:
 
                 // read from low_fd
                 // send from high idx to low idx, from j to i
-                boost::asio::spawn([i, j, this](boost::asio::yield_context yield){
-                    auto& io_contexts = IOExecutor::GetInstance()->GetContexts();
+                boost::asio::spawn([i, j, io_executor, this](boost::asio::yield_context yield){
                     boost::system::error_code ec;
                     auto& state = this->transfer_map[genTransferKey(i, j)];
                     int recv_fd = -1;
@@ -63,7 +64,7 @@ public:
                             int j = 1;
                             return;
                         }
-                        auto session = boost::intrusive_ptr<Session>(new Session(io_contexts[i]));
+                        auto session = boost::intrusive_ptr<Session>(new Session(io_executor->GetContextAt(i)));
                         session->peer.assign(boost::asio::ip::tcp::v4(), recv_fd);
                         session->replyOK();
                         session->WaitProcess();
@@ -73,8 +74,7 @@ public:
 
                 // read from high idx
                 // send from low idx to high idx, from i to j
-                boost::asio::spawn([i, j, this](boost::asio::yield_context yield){
-                    auto& io_contexts = IOExecutor::GetInstance()->GetContexts();
+                boost::asio::spawn([i, j, io_executor,this](boost::asio::yield_context yield){
                     boost::system::error_code ec;
                     auto& state = this->transfer_map[genTransferKey(i, j)];
                     int recv_fd = -1;
@@ -84,7 +84,7 @@ public:
                             int j = 1;
                             return;
                         }
-                        auto session = boost::intrusive_ptr<Session>(new Session(io_contexts[i]));
+                        auto session = boost::intrusive_ptr<Session>(new Session(io_executor->GetContextAt(j)));
                         session->peer.assign(boost::asio::ip::tcp::v4(), recv_fd);
                         session->replyOK();
                         session->WaitProcess();
@@ -101,9 +101,10 @@ public:
      * return false if transfer is not needed
      */
     bool doTransfer(boost::intrusive_ptr<Session> session, uint32_t target_db_idx) {
-        auto& io_contexts = IOExecutor::GetInstance()->GetContexts();
 
-        uint32_t to_idx = target_db_idx % io_contexts.size();
+        auto io_executor = IOExecutor::GetInstance();
+
+        uint32_t to_idx = target_db_idx % io_executor->GetContextCount();
         auto io_context = static_cast<boost::asio::io_context*>(&session->peer.get_executor().context());
         uint32_t from_idx = transfer_index_map[io_context];
         if (from_idx == to_idx) return false;

@@ -10,6 +10,8 @@
 
 #include "../Protocol/BProto.pb.h"
 
+#include "../Command/CommandDispatch.h"
+
 #include "IOTransfer.h"
 
 #define Q(x) #x
@@ -63,7 +65,7 @@ void Session::replyOK(...)
 {
     auto header = (BProtoHeader *)&buff[0];
     header->payload_len = 0;
-    header->payload_cmd = Command::OK;
+    header->payload_cmd = universal_command::OK;
     boost::asio::async_write(this->peer,
                              boost::asio::buffer(&buff[0], BProtoHeaderSize),
                              [this](const boost::system::error_code &ec,
@@ -77,10 +79,10 @@ void Session::replyOK(...)
 void Session::replyIntOK(int code)
 {
     auto header = (BProtoHeader *)&buff[0];
-    INT_OK_REPLY reply;
+    universal_command::INT_REPLY1 reply;
     reply.set_value(code);
     header->payload_len = reply.ByteSizeLong();
-    header->payload_cmd = Command::INT_OK;
+    header->payload_cmd = universal_command::INT_OK;
     reply.SerializePartialToArray(&buff[BProtoHeaderSize], reply.ByteSizeLong());
     boost::asio::async_write(this->peer,
                              boost::asio::buffer(&buff[0], BProtoHeaderSize + header->payload_len),
@@ -95,10 +97,10 @@ void Session::replyIntOK(int code)
 void Session::replyStringOK(const std::string &str)
 {
     auto header = (BProtoHeader *)&buff[0];
-    STRING_OK_REPLY reply;
+    universal_command::REPLY1 reply;
     reply.set_value(str);
     header->payload_len = reply.ByteSizeLong();
-    header->payload_cmd = Command::STRING_OK;
+    header->payload_cmd = universal_command::STRING_OK;
     reply.SerializeToArray(BProtoHeaderOffset(&buff[0]), header->payload_len);
     boost::asio::async_write(this->peer,
                              boost::asio::buffer(&buff[0], BProtoHeaderSize + header->payload_len),
@@ -113,12 +115,12 @@ void Session::replyStringOK(const std::string &str)
 void Session::replyRepeatedStringOK(std::vector<std::string> &&strs)
 {
     auto header = (BProtoHeader *)&buff[0];
-    REPEATED_STRING_OK_REPLY reply;
+    universal_command::REPLY_ANY reply;
     for (int i = 0; i < strs.size(); ++i) {
         reply.add_value(std::move(strs[i]));
     }
     header->payload_len = reply.ByteSizeLong();
-    header->payload_cmd = Command::REPEATED_STRING_OK;
+    header->payload_cmd = universal_command::REPEATED_STRING_OK;
     reply.SerializeToArray(BProtoHeaderOffset(&buff[0]), header->payload_len);
     boost::asio::async_write(this->peer,
                              boost::asio::buffer(&buff[0], BProtoHeaderSize + header->payload_len),
@@ -133,10 +135,10 @@ void Session::replyRepeatedStringOK(std::vector<std::string> &&strs)
 void Session::replyErr(int code)
 {
     auto header = (BProtoHeader *)&buff[0];
-    INT_OK_REPLY reply;
+    universal_command::INT_REPLY1 reply;
     reply.set_value(code);
     header->payload_len = 0;
-    header->payload_cmd = (Command)code;
+    header->payload_cmd = (universal_command::COMMAND)code;
     reply.SerializePartialToArray(&buff[BProtoHeaderSize], reply.ByteSizeLong());
     boost::asio::async_write(this->peer,
                              boost::asio::buffer(&buff[0], BProtoHeaderSize + header->payload_len),
@@ -178,14 +180,14 @@ void Session::readHeader()
                                     }));
 }
 
-void Session::readPayload(uint32_t size, int cmd_type)
+void Session::readPayload(uint32_t size, int command_code)
 {
     auto self = this->self();
     boost::asio::async_read(this->peer,
                             boost::asio::buffer(&buff[0], size),
                             make_custom_alloc_handler(
                                     this->handler_memory_,
-                                    [self, this, cmd_type](const boost::system::error_code &ec,
+                                    [self, this, command_code](const boost::system::error_code &ec,
                                                      std::size_t bytes_transferred) {
                                         if (ec)
                                         {
@@ -193,53 +195,64 @@ void Session::readPayload(uint32_t size, int cmd_type)
                                             fflush(stdout);
                                             return;
                                         }
-                                        switch ((int)cmd_type)
-                                        {
-                                            case universal_command::SELECT:
-                                            {
-                                                universal_command::SELECT_REQ req;
-                                                req.ParseFromArray(&buff[0], bytes_transferred);
-                                                auto db_index = boost::lexical_cast<uint32_t>(req.db());
-                                                auto res = IOTransfer::GetInstance()->doTransfer(this, db_index);
-                                                if (res) return;
-                                                replyOK();
-                                                break;
-                                            }
-                                            case Command::SAVE:
-                                            {
-                                                Dump::SAVE();
-                                                replyOK();
-                                                break;
-                                            }
-                                            case Command::BGSAVE:
-                                            {
-                                                Dump::BGSAVE();
-                                                replyOK();
-                                                break;
-                                            }
-                                            case Command::KEYS:
-                                            {
-                                                auto db = Database::GetInstance();
-                                                replyRepeatedStringOK(db->KEYS(0));
-                                                break;
-                                            }
-                                            GenStringCase2(SET, replyOK)
-                                            GenStringCase1(GET, replyStringOK)
-                                            GenStringCase3(PSETEX, replyIntOK)
-                                            GenStringCase3(SETEX, replyIntOK)
-                                            GenStringCase3(GETRANGE, replyStringOK)
-                                            GenStringCase2(SETNX, replyIntOK)
-                                            GenStringCase2(GETSET, replyStringOK)
-                                            GenStringCase1(INCR, replyStringOK)
-                                            GenStringCase1(DECR, replyStringOK)
-                                            GenStringCase1(STRLEN, replyIntOK)
-                                            GenStringCase2(APPEND, replyIntOK)
-                                            GenStringCase2(INCRBY, replyStringOK)
-                                            GenStringCase2(DECRBY, replyStringOK)
-                                            default:
-                                            {
-                                            }
-                                        };
+
+                                        this->buff.resize(bytes_transferred);
+
+                                        CommandDispatch::GetInstance()->Dispatch(command_code, this->self());
+
+//                                        switch ((int)command_code)
+//                                        {
+//                                            case universal_command::SELECT:
+//                                            {
+//                                                universal_command::SELECT_REQ req;
+//                                                req.ParseFromArray(&buff[0], bytes_transferred);
+//                                                uint32_t db_index = 0;
+//                                                try {
+//                                                    db_index = boost::lexical_cast<uint32_t>(req.db());
+//                                                }catch (...) {
+//                                                    replyErr(Command::PARAM_ERR);
+//                                                    break;
+//                                                }
+//                                                auto res = IOTransfer::GetInstance()->doTransfer(this, db_index);
+//                                                if (res) return;
+//                                                replyOK();
+//                                                break;
+//                                            }
+//                                            case Command::SAVE:
+//                                            {
+//                                                Dump::SAVE();
+//                                                replyOK();
+//                                                break;
+//                                            }
+//                                            case Command::BGSAVE:
+//                                            {
+//                                                Dump::BGSAVE();
+//                                                replyOK();
+//                                                break;
+//                                            }
+//                                            case Command::KEYS:
+//                                            {
+//                                                auto db = Database::GetInstance();
+//                                                replyRepeatedStringOK(db->KEYS(0));
+//                                                break;
+//                                            }
+//                                            GenStringCase2(SET, replyOK)
+//                                            GenStringCase1(GET, replyStringOK)
+//                                            GenStringCase3(PSETEX, replyIntOK)
+//                                            GenStringCase3(SETEX, replyIntOK)
+//                                            GenStringCase3(GETRANGE, replyStringOK)
+//                                            GenStringCase2(SETNX, replyIntOK)
+//                                            GenStringCase2(GETSET, replyStringOK)
+//                                            GenStringCase1(INCR, replyStringOK)
+//                                            GenStringCase1(DECR, replyStringOK)
+//                                            GenStringCase1(STRLEN, replyIntOK)
+//                                            GenStringCase2(APPEND, replyIntOK)
+//                                            GenStringCase2(INCRBY, replyStringOK)
+//                                            GenStringCase2(DECRBY, replyStringOK)
+//                                            default:
+//                                            {
+//                                            }
+//                                        };
                                         readHeader();
                                     }));
 }

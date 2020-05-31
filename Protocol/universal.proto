@@ -5,11 +5,79 @@ package universal_command;
 enum COMMAND {
   VOID = 0;
   OK = 100;
-  SELECT = 101;
+  INT_OK = 101;
+  STRING_OK = 102;
+  REPEATED_STRING_OK = 103;
+  SAVE = 104;
+  BG_SAVE = 105;
+  SELECT = 106;
+
+  RESERVE = 107;
+
+  KEYS = 108;
+  EXIST_ERR = 109;
+  NOT_EXIST_ERR = 110;
+  NOT_MATCH_ERR = 111;
+  PARAM_ERR = 112;
+  OUT_OF_RANGE_ERR = 113;
 }
 
-message SELECT_REQ {
-  string db = 1;
+message INT_REQ1 {
+  int32 value = 1;
+}
+
+message INT_REQ2 {
+  int32 value1 = 1;
+  int32 value2 = 2;
+}
+
+message INT_REQ3 {
+  int32 value1 = 1;
+  int32 value2 = 2;
+  int32 value3 = 3;
+}
+
+message REQ1 {
+  string value = 1;
+}
+
+message REQ2 {
+  string value1 = 1;
+  string value2 = 2;
+}
+
+message REQ3 {
+  string value1 = 1;
+  string value2 = 2;
+  string value3 = 3;
+}
+
+message REQ4 {
+  string value1 = 1;
+  string value2 = 2;
+  string value3 = 3;
+  string value4 = 4;
+}
+
+message REQ5 {
+  string value1 = 1;
+  string value2 = 2;
+  string value3 = 3;
+  string value4 = 4;
+  string value5 = 5;
+}
+
+message REQ_ANY {
+  repeated string value1 = 1;
+}
+
+message INT_REPLY1 {
+  int32 value = 1;
+}
+
+message INT_REPLY2 {
+  int32 value1 = 1;
+  int32 value2 = 2;
 }
 
 message REPLY1 {
@@ -43,5 +111,5 @@ message REPLY5 {
 }
 
 message REPLY_ANY {
-  repeated string value1 = 1;
+  repeated string value = 1;
 }

@@ -17,16 +17,17 @@ public:
     Server() {}
 
     void Init() {
-        auto& io_contexts = IOExecutor::GetInstance()->GetContexts();
+
+        auto io_executor = IOExecutor::GetInstance();
 
         auto bind_ep = boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), 6666);
         boost::system::error_code ec;
 
-        for (int i = 0; i < io_contexts.size(); ++i) {
+        for (int i = 0; i < io_executor->GetContextCount(); ++i) {
 
             int opt = 1;
 
-            acceptors.emplace_back(Acceptor(io_contexts[i]));
+            acceptors.emplace_back(Acceptor(io_executor->GetContextAt(i)));
             acceptors.back().open(bind_ep.protocol(), ec);
             if (ec)
             {
