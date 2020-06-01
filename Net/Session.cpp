@@ -218,6 +218,8 @@ void Session::readPayload(uint32_t size, int command_code)
                                         }
 
                                         auto self = this->self();
+//                                        printf("idx: %d handled by: %p\n", this->db_index, &this->peer.get_executor().context());
+//                                        fflush(stdout);
                                         CommandDispatch::GetInstance()->Dispatch(command_code, bytes_transferred, self);
                                         readHeader();
                                     }));

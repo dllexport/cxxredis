@@ -39,11 +39,11 @@ public:
                 return;
             }
 
-            auto select_res = selectDB(0, yield);
+            auto select_res = selectDB(this->db_index, yield);
             if (!select_res) return;
 
 
-            for(int i = 0; i < 500000; ++i) {
+            for(int i = 0; i < 1000000; ++i) {
 
                 testSET(yield);
 
@@ -80,8 +80,9 @@ private:
         }
         auto payload_len = header->payload_len;
         auto payload_type = header->payload_cmd;
-        if (payload_type == universal_command::SELECT_OK && payload_len == 0) {
-            return true;
+        if (payload_type == universal_command::SELECT_OK) {
+            if (readPayload(payload_len, yield))
+                return true;
         }
         return false;
     }
@@ -106,6 +107,45 @@ private:
             return {false, 0};
         }
         return {true, bytes_read};
+    }
+
+    bool readPayload(size_t bytes_to_read, boost::asio::yield_context yield) {
+        boost::system::error_code ec;
+        // ready to send
+        auto bytes_read = boost::asio::async_read(this->socket, boost::asio::buffer(&buff[0], bytes_to_read), yield[ec]);
+        if (ec)
+        {
+            return false;
+        }
+        return true;
+    }
+
+    bool testGET(boost::asio::yield_context yield)
+    {
+        static std::vector<std::string> parts = {"GET", "BENCHMARK_SET"};
+
+        auto bytes_to_send = CommandMap::GetInstance()->Dispatch(parts, this->buff);
+        if (bytes_to_send <= 0) {
+            return false;
+        }
+        auto send_res = sendCommand(bytes_to_send, yield);
+        if (!send_res) return false;
+
+        auto read_header_res = readHeader(yield);
+        if (!read_header_res.first) return false;
+
+        auto header = (BProtoHeader *)&buff[0];
+        if (header->payload_len > buff.size())
+        {
+            return false;
+        }
+        auto payload_len = header->payload_len;
+        auto payload_type = header->payload_cmd;
+        if (payload_type == universal_command::STRING_OK) {
+            if (readPayload(payload_len, yield))
+                return true;
+        }
+        return false;
     }
 
     bool testSET(boost::asio::yield_context yield)
@@ -138,19 +178,23 @@ private:
 };
 #include <boost/thread.hpp>
 int main() {
+    int core = 128;
     client_command::RegisterAll();
+    std::atomic<uint32_t> time_sum;
     boost::thread_group tg;
-    auto t1 = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < 16; ++i) {
-        tg.create_thread([i](){
+    for (int i = 0; i < core; ++i) {
+        tg.create_thread([&, i](){
+            auto t1 = std::chrono::high_resolution_clock::now();
             BenchmarkSet(i).Run();
+            auto t2 = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+            time_sum += duration;
         });
     }
     tg.join_all();
-    auto t2 = std::chrono::high_resolution_clock::now();
 
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-
-    std::cout << duration << "\n";
+    printf("timesum: %d\n", time_sum.load());
+    printf("avg time: %lf\n", time_sum.load() / double(core));
+    std::cout << "QPS:" << (1000000 * core) / (time_sum / core)  << "\n";
     fflush(stdout);
 }

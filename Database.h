@@ -20,11 +20,12 @@ public:
     uint8_t Set(uint8_t db_index, const std::string&& key, Object* object) {
         auto& db = this->dbs[db_index];
         auto it = db.find(key);
-        if (it == db.end()) {
-            db.emplace(key, object);
+        if (it != db.end()) {
+            db.erase(it);
+            db.insert({key, object});
             return 0;
         }
-        it->second.reset(object);
+        db.insert({key, object});
         return 0;
     }
 

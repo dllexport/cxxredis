@@ -13,10 +13,10 @@
 class Session : public SmartPtr<Session>
 {
 public:
-    Session(boost::asio::io_context &io) : buff(1024), peer(io) {}
+    Session(boost::asio::io_context &io) : buff(1024), peer(io) { }
 
     ~Session() {
-        std::cout << "session die\n";
+        std::cout << "session die " << &this->peer.get_executor().context() << std::endl;
         fflush(stdout);
     }
 

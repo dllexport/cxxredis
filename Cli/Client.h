@@ -131,19 +131,19 @@ public:
             linenoiseSetHintsCallback(hints);
 
             char *line;
-            std::vector<char> input(4096);
+//            std::vector<char> input(4096);
             auto t1 = std::chrono::high_resolution_clock::now();
 
             auto remote_ep = this->socket.remote_endpoint();
-//            while(1) {
-//                auto prompt = remote_ep.address().to_string() + ":" + std::to_string(remote_ep.port()) + "[" + std::to_string(db_index) + "]> ";
-//                line = linenoise(prompt.c_str());
-//                if (!line)
-//                    return;
             while(1) {
-                std::cin.getline(&input.at(0), 4096);
-                line = &input[0];
-//                linenoiseHistoryAdd(line); /* Add to the history. */
+                auto prompt = remote_ep.address().to_string() + ":" + std::to_string(remote_ep.port()) + "[" + std::to_string(db_index) + "]> ";
+                line = linenoise(prompt.c_str());
+                if (!line)
+                    return;
+//            while(1) {
+//                std::cin.getline(&input.at(0), 4096);
+//                line = &input[0];
+                linenoiseHistoryAdd(line); /* Add to the history. */
                 auto line_str = std::string(line);
                 boost::trim_all(line_str);
 
@@ -188,7 +188,7 @@ public:
                 } else if (line[0] == '/') {
                     printf("Unreconized command: %s\n", line);
                 }
-//                free(line);
+                free(line);
             }
 
             auto t2 = std::chrono::high_resolution_clock::now();

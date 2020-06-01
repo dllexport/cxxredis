@@ -18,13 +18,13 @@
  * each io_context is responsible for a set of dbs, their index is simply a mod calculation
  * for instance:
  *      on a system with 4 core(which means 4 io_contexts) 16 dbs
- *      db 0,1,2,3 is managed by io_contexts[0]
- *      db 4,5,6,7 is managed by io_contexts[1] ... so forth
+ *      db 0,4,8,12 is managed by io_contexts[0]
+ *      db 1,5,9,13 is managed by io_contexts[1] ... so forth
  *
  * with SO_REUSEPORT enalbed, each io_context has it's own socket, but they all bind to same endpoint
  * let's say the default db is db[0] for every new connection, which is handle by io_contexts[0]
  * when client connect, the socket might be handled by any of the io_contexts
- * client socket in io_conetxt[1] must not access db [0,1,2,3], db [8,9,10,11] and db [12,13,14,15]
+ * client socket in io_conetxt[1] must not access db [0,4,8,12], db [2,6,10,14] and db [3,7,11,15]
  * there's a race condition here, but client should be access any db anyway
  * adding mutex is an easy approach but there's another way
  * we use UnixSocket to solve the issue
@@ -66,6 +66,8 @@ public:
         auto context_count = io_executor->GetContextCount();
 
         for (int i = 0 ; i <= context_count - 1; ++i) {
+            printf("context %i at %p\n", i, &io_executor->GetContextAt(i));
+            fflush(stdout);
             this->transfer_index_map.insert({&io_executor->GetContextAt(i), i});
         }
 
@@ -85,7 +87,7 @@ public:
 
                 // read from low_fd
                 // send from high idx to low idx, from j to i
-                boost::asio::spawn([i, j, io_executor, this](boost::asio::yield_context yield){
+                boost::asio::spawn(io_executor->GetContextAt(i), [i, j, io_executor, this](boost::asio::yield_context yield){
                     boost::system::error_code ec;
                     auto& state = this->transfer_map[genTransferKey(i, j)];
                     transfer_context ctx{};
@@ -95,6 +97,8 @@ public:
                             return;
                         }
                         auto session = boost::intrusive_ptr<Session>(new Session(io_executor->GetContextAt(i)));
+                        std::cout << "asign to " << &io_executor->GetContextAt(i) << std::endl;
+                        fflush(stdout);
                         session->peer.assign(boost::asio::ip::tcp::v4(), ctx.fd);
                         session->db_index = ctx.db_index;
                         session->replySelectOK(ctx.db_index);
@@ -104,7 +108,7 @@ public:
 
                 // read from high idx
                 // send from low idx to high idx, from i to j
-                boost::asio::spawn([i, j, io_executor,this](boost::asio::yield_context yield){
+                boost::asio::spawn(io_executor->GetContextAt(j), [i, j, io_executor,this](boost::asio::yield_context yield){
                     boost::system::error_code ec;
                     auto& state = this->transfer_map[genTransferKey(i, j)];
                     transfer_context ctx{};
@@ -114,6 +118,8 @@ public:
                             return;
                         }
                         auto session = boost::intrusive_ptr<Session>(new Session(io_executor->GetContextAt(j)));
+                        std::cout << "session assign " << &io_executor->GetContextAt(j) << std::endl;
+                        fflush(stdout);
                         session->peer.assign(boost::asio::ip::tcp::v4(), ctx.fd);
                         session->db_index = ctx.db_index;
                         session->replySelectOK(ctx.db_index);
@@ -151,7 +157,11 @@ public:
         uint32_t to_idx = target_db_idx % io_executor->GetContextCount();
         auto io_context = static_cast<boost::asio::io_context*>(&session->peer.get_executor().context());
         uint32_t from_idx = transfer_index_map[io_context];
+
         if (from_idx == to_idx) {
+            // the default db_index is 0
+            // which must be updated to the right idx
+            session->db_index = to_idx;
             session->replySelectOK(target_db_idx);
             return false;
         }
@@ -161,6 +171,8 @@ public:
 
         auto transfer_state = this->transfer_map[genTransferKey(low, high)];
 
+        std::cout << "release\n";
+        fflush(stdout);
         auto fd = session->peer.release();
         *(int*)session->buff.data() = fd;
 

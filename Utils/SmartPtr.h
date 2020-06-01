@@ -49,7 +49,7 @@ public:
     * 递减引用计数
     */
     friend void intrusive_ptr_release(SmartPtr<T> const* s) {
-        // std::cout << "  intrusive_ptr_release..." << std::endl;
+//        std::cout << "  intrusive_ptr_release... " << s->ref_count << std::endl;
         assert(s->ref_count > 0);
         assert(s != 0);
         if (--s->ref_count == 0)
