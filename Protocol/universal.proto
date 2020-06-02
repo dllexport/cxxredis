@@ -37,37 +37,37 @@ message INT_REQ3 {
 }
 
 message REQ1 {
-  string value = 1;
+  bytes value = 1;
 }
 
 message REQ2 {
-  string value1 = 1;
-  string value2 = 2;
+  bytes value1 = 1;
+  bytes value2 = 2;
 }
 
 message REQ3 {
-  string value1 = 1;
-  string value2 = 2;
-  string value3 = 3;
+  bytes value1 = 1;
+  bytes value2 = 2;
+  bytes value3 = 3;
 }
 
 message REQ4 {
-  string value1 = 1;
-  string value2 = 2;
-  string value3 = 3;
-  string value4 = 4;
+  bytes value1 = 1;
+  bytes value2 = 2;
+  bytes value3 = 3;
+  bytes value4 = 4;
 }
 
 message REQ5 {
-  string value1 = 1;
-  string value2 = 2;
-  string value3 = 3;
-  string value4 = 4;
-  string value5 = 5;
+  bytes value1 = 1;
+  bytes value2 = 2;
+  bytes value3 = 3;
+  bytes value4 = 4;
+  bytes value5 = 5;
 }
 
 message REQ_ANY {
-  repeated string value1 = 1;
+  repeated bytes value1 = 1;
 }
 
 message INT_REPLY1 {
@@ -80,35 +80,35 @@ message INT_REPLY2 {
 }
 
 message REPLY1 {
-  string value = 1;
+  bytes value = 1;
 }
 
 message REPLY2 {
-  string value1 = 1;
-  string value2 = 2;
+  bytes value1 = 1;
+  bytes value2 = 2;
 }
 
 message REPLY3 {
-  string value1 = 1;
-  string value2 = 2;
-  string value3 = 3;
+  bytes value1 = 1;
+  bytes value2 = 2;
+  bytes value3 = 3;
 }
 
 message REPLY4 {
-  string value1 = 1;
-  string value2 = 2;
-  string value3 = 3;
-  string value4 = 4;
+  bytes value1 = 1;
+  bytes value2 = 2;
+  bytes value3 = 3;
+  bytes value4 = 4;
 }
 
 message REPLY5 {
-  string value1 = 1;
-  string value2 = 2;
-  string value3 = 3;
-  string value4 = 4;
-  string value5 = 5;
+  bytes value1 = 1;
+  bytes value2 = 2;
+  bytes value3 = 3;
+  bytes value4 = 4;
+  bytes value5 = 5;
 }
 
 message REPLY_ANY {
-  repeated string value = 1;
+  repeated bytes value = 1;
 }

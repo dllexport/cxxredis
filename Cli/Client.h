@@ -131,8 +131,7 @@ public:
             linenoiseSetHintsCallback(hints);
 
             char *line;
-//            std::vector<char> input(4096);
-            auto t1 = std::chrono::high_resolution_clock::now();
+            std::vector<char> input(4096);
 
             auto remote_ep = this->socket.remote_endpoint();
             while(1) {
@@ -143,11 +142,12 @@ public:
 //            while(1) {
 //                std::cin.getline(&input.at(0), 4096);
 //                line = &input[0];
-                linenoiseHistoryAdd(line); /* Add to the history. */
                 auto line_str = std::string(line);
-                boost::trim_all(line_str);
-
+                boost::trim_right(line_str);
+                boost::trim_left(line_str);
                 if (line[0] != '\0' && line[0] != '/') {
+//                    printf("You wrote: %s\n", line);
+//                    printf("You wrote: %s\n", line_str.c_str());
                     auto bytes_to_send = serialize(line_str, buff);
                     if (bytes_to_send <= 0) {
                         continue;
@@ -188,15 +188,9 @@ public:
                 } else if (line[0] == '/') {
                     printf("Unreconized command: %s\n", line);
                 }
+                linenoiseHistoryAdd(line);
                 free(line);
             }
-
-            auto t2 = std::chrono::high_resolution_clock::now();
-
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-
-            std::cout << duration << "\n";
-            fflush(stdout);
         });
         this->io_context.run();
     }
@@ -209,67 +203,11 @@ private:
     int64_t serialize(std::string &command, std::vector<char> &buff)
     {
         std::vector<std::string> parts;
-        boost::split(parts, command, boost::is_any_of(" "));
+        boost::split(parts, command, boost::is_any_of(" "), boost::token_compress_on);
         if (parts.size() == 0)
             return -1;
         parts[0] = boost::to_upper_copy<std::string>(parts[0]);
         return CommandMap::GetInstance()->Dispatch(parts, buff);
-        switch (str2int(parts[0].c_str()))
-        {
-            case str2int("KEYS"): {
-                if (parts.size() != 1) return false;
-                auto header = (BProtoHeader *) &buff[0];
-                header->payload_len = 0;
-                header->payload_cmd = universal_command::KEYS;
-                return BProtoHeader::Size();
-                break;
-            }
-            case str2int("SAVE"): {
-                if (parts.size() != 1) return false;
-                auto header = (BProtoHeader *) &buff[0];
-                header->payload_len = 0;
-                header->payload_cmd = universal_command::SAVE;
-                return BProtoHeader::Size();
-                break;
-            }
-            case str2int("BGSAVE"): {
-                if (parts.size() != 1) return false;
-                auto header = (BProtoHeader *) &buff[0];
-                header->payload_len = 0;
-                header->payload_cmd = universal_command::BG_SAVE;
-                return BProtoHeader::Size();
-                break;
-            }
-            case str2int("SELECT"): {
-                if (parts.size() != 2)return false;
-                universal_command::REQ1 req;
-                req.set_value(parts[1]);
-                auto serial_size = req.ByteSizeLong();
-                if (serial_size > buff.capacity())return false;
-                req.SerializeToArray(&buff[0] + BProtoHeader::Size(), serial_size);
-                auto header = (BProtoHeader *) &buff[0];
-                header->payload_len = serial_size;
-                header->payload_cmd = universal_command::SELECT;
-                return BProtoHeader::Size() + serial_size;
-            }
-            GenStringCase2(GET)
-            GenStringCase2(STRLEN)
-            GenStringCase3(SET)
-            GenStringCase3(GETSET)
-            GenStringCase3(APPEND)
-            GenStringCase2(INCR)
-            GenStringCase2(DECR)
-            GenStringCase3(DECRBY)
-            GenStringCase3(INCRBY)
-            GenStringCase3(SETNX)
-            GenStringCase4(PSETEX)
-            GenStringCase4(SETEX)
-            GenStringCase4(GETRANGE)
-        default:
-        {
-            return -1;
-        }
-        };
     }
 
     std::vector<std::string> deserialize(std::vector<char> &buff, uint32_t size, int cmd_type)

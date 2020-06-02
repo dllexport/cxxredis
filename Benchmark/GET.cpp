@@ -43,7 +43,7 @@ public:
             if (!select_res) return;
 
 
-            for(int i = 0; i < 1000000; ++i) {
+            for(int i = 0; i < 200000; ++i) {
 
                 testSET(yield);
 
@@ -178,7 +178,7 @@ private:
 };
 #include <boost/thread.hpp>
 int main() {
-    int core = 128;
+    int core = 1;
     client_command::RegisterAll();
     std::atomic<uint32_t> time_sum;
     boost::thread_group tg;
