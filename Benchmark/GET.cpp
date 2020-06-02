@@ -18,6 +18,8 @@
 #include "../Cli/CommandMap.h"
 #include "../Cli/CommandRegistry.h"
 
+static size_t request_sum = 0;
+
 class BenchmarkSet
 {
 public:
@@ -43,9 +45,9 @@ public:
             if (!select_res) return;
 
 
-            for(int i = 0; i < 200000; ++i) {
+            for(int i = 0; i < request_sum; ++i) {
 
-                testSET(yield);
+                selectDB(i % 16, yield);
 
             }
 
@@ -177,24 +179,24 @@ private:
 
 };
 #include <boost/thread.hpp>
-int main() {
-    int core = 1;
+#include <boost/lexical_cast.hpp>
+int main(int argc, char** argv) {
+    request_sum = 500000;
+    int core = boost::lexical_cast<int>(argv[1]);
     client_command::RegisterAll();
     std::atomic<uint32_t> time_sum;
     boost::thread_group tg;
+    auto t1 = std::chrono::high_resolution_clock::now();
     for (int i = 0; i < core; ++i) {
         tg.create_thread([&, i](){
-            auto t1 = std::chrono::high_resolution_clock::now();
             BenchmarkSet(i).Run();
-            auto t2 = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-            time_sum += duration;
         });
     }
     tg.join_all();
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
 
-    printf("timesum: %d\n", time_sum.load());
-    printf("avg time: %lf\n", time_sum.load() / double(core));
-    std::cout << "QPS:" << (1000000 * core) / (time_sum / core)  << "\n";
+    printf("request sum: %zu  time used: %lf\n", request_sum * core, duration / double(1000));
+    std::cout << "QPS:" << (request_sum * core) / double(duration / double(1000))  << "\n";
     fflush(stdout);
 }

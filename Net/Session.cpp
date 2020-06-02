@@ -188,8 +188,8 @@ void Session::readHeader()
                                            std::size_t bytes_transferred) {
                                         if (ec)
                                         {
-                                            std::cout << ec.message();
-                                            fflush(stdout);
+//                                            std::cout << ec.message();
+//                                            fflush(stdout);
                                             return;
                                         }
                                         auto header = (BProtoHeader *)&buff[0];
@@ -212,8 +212,8 @@ void Session::readPayload(uint32_t size, int command_code)
                                                      std::size_t bytes_transferred) {
                                         if (ec)
                                         {
-                                            std::cout << ec.message();
-                                            fflush(stdout);
+//                                            std::cout << ec.message();
+//                                            fflush(stdout);
                                             return;
                                         }
 

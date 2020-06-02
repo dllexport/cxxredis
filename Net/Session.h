@@ -16,8 +16,8 @@ public:
     Session(boost::asio::io_context &io) : buff(1024), peer(io) { }
 
     ~Session() {
-        std::cout << "session die " << &this->peer.get_executor().context() << std::endl;
-        fflush(stdout);
+//        std::cout << "session die " << &this->peer.get_executor().context() << std::endl;
+//        fflush(stdout);
     }
 
     void WaitProcess();

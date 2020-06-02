@@ -66,8 +66,6 @@ public:
         auto context_count = io_executor->GetContextCount();
 
         for (int i = 0 ; i <= context_count - 1; ++i) {
-            printf("context %i at %p\n", i, &io_executor->GetContextAt(i));
-            fflush(stdout);
             this->transfer_index_map.insert({&io_executor->GetContextAt(i), i});
         }
 
@@ -97,8 +95,8 @@ public:
                             return;
                         }
                         auto session = boost::intrusive_ptr<Session>(new Session(io_executor->GetContextAt(i)));
-                        std::cout << "asign to " << &io_executor->GetContextAt(i) << std::endl;
-                        fflush(stdout);
+//                        std::cout << "asign to " << &io_executor->GetContextAt(i) << std::endl;
+//                        fflush(stdout);
                         session->peer.assign(boost::asio::ip::tcp::v4(), ctx.fd);
                         session->db_index = ctx.db_index;
                         session->replySelectOK(ctx.db_index);
@@ -118,8 +116,8 @@ public:
                             return;
                         }
                         auto session = boost::intrusive_ptr<Session>(new Session(io_executor->GetContextAt(j)));
-                        std::cout << "session assign " << &io_executor->GetContextAt(j) << std::endl;
-                        fflush(stdout);
+//                        std::cout << "session assign " << &io_executor->GetContextAt(j) << std::endl;
+//                        fflush(stdout);
                         session->peer.assign(boost::asio::ip::tcp::v4(), ctx.fd);
                         session->db_index = ctx.db_index;
                         session->replySelectOK(ctx.db_index);
@@ -171,8 +169,8 @@ public:
 
         auto transfer_state = this->transfer_map[genTransferKey(low, high)];
 
-        std::cout << "release\n";
-        fflush(stdout);
+//        std::cout << "release\n";
+//        fflush(stdout);
         auto fd = session->peer.release();
         *(int*)session->buff.data() = fd;
 
